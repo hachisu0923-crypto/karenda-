@@ -748,36 +748,51 @@ function renderExistingEvents() {
       metaHtml=(tRange?`<span>${tRange}</span>`:'')+
                `<span class="ev-cat-chip" style="background:${cat.color}">${escHtml(cat.name)}</span>`;
     }
-    row.innerHTML=`
-      <span class="ev-color-dot" style="background:${cat.color}"></span>
-      <div class="ev-info ev-info--tappable">
-        <div class="ev-title">${titleHtml}</div>
-        <div class="ev-meta">${metaHtml}</div>
-      </div>
-      <div class="ev-actions">
-        <button class="ev-edit-btn" title="編集">✏️</button>
-        <button class="ev-delete-btn" title="削除">✕</button>
-      </div>`;
-    // Tap ev-info to edit (convenient on mobile)
-    row.querySelector('.ev-info').addEventListener('click', e => {
-      e.stopPropagation(); openEditModal(ev);
-    });
-    row.querySelector('.ev-edit-btn').addEventListener('click',e=>{
-      e.stopPropagation(); openEditModal(ev);
-    });
-    row.querySelector('.ev-delete-btn').addEventListener('click',async e=>{
+    // ── DOM要素を個別生成（innerHTML経由のリスナーより確実） ──
+    const dot = document.createElement('span');
+    dot.className = 'ev-color-dot';
+    dot.style.background = cat.color;
+
+    const info = document.createElement('div');
+    info.className = 'ev-info ev-info--tappable';
+    info.innerHTML = `<div class="ev-title">${titleHtml}</div><div class="ev-meta">${metaHtml}</div>`;
+    info.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev); });
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'ev-edit-btn';
+    editBtn.title = '編集';
+    editBtn.textContent = '✏️';
+    editBtn.type = 'button';
+    editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev); });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'ev-delete-btn';
+    delBtn.title = '削除';
+    delBtn.textContent = '✕';
+    delBtn.type = 'button';
+    delBtn.addEventListener('click', async e => {
       e.stopPropagation();
+      e.preventDefault();
       if (!confirm('この予定を削除しますか？')) return;
-      const arr=events[selectedKey];
-      const idx=arr.indexOf(ev);
-      if (idx!==-1) {
+      const arr = events[selectedKey];
+      const idx = arr.indexOf(ev);
+      if (idx !== -1) {
         await deleteEventFromSupabase(ev);
-        arr.splice(idx,1);
+        arr.splice(idx, 1);
         if (!arr.length) delete events[selectedKey];
         renderExistingEvents();
         renderAll();
       }
     });
+
+    const actions = document.createElement('div');
+    actions.className = 'ev-actions';
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
+    row.appendChild(dot);
+    row.appendChild(info);
+    row.appendChild(actions);
     container.appendChild(row);
   });
 }
