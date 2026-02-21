@@ -53,9 +53,6 @@
 
   /* — Theme icon — */
   --icon-theme: "🌙";
-
-  /* — Layout heights — */
-  --topbar-h: 49px;
 }
 
 /* ============================================================
@@ -478,7 +475,7 @@ input  { font-family: inherit; }
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--color-border-strong);
   position: sticky;
-  top: var(--topbar-h);
+  top: 0;
   background-color: var(--color-bg-base);
   z-index: 5;
   transition: background-color 0.25s;
@@ -1501,7 +1498,7 @@ input  { font-family: inherit; }
 
   /* Layout: stack vertically, full width */
   .layout { flex-direction: column; }
-  .main   { width: 100%; overflow: visible; }
+  .main   { width: 100%; }
 
   /* ── Topbar ── */
   .topbar {
@@ -1512,12 +1509,9 @@ input  { font-family: inherit; }
   .topbar-title { font-size: 15px; }
   .topbar-sub   { font-size: 10px; }
 
-  /* ── Calendar wrap: remove the min-width constraint ── */
-  .calendar-wrap { overflow-x: hidden; overflow-y: visible; }
+  /* ── Calendar wrap: スクロールコンテナを維持しつつ横はみ出しを防ぐ ── */
+  .calendar-wrap { overflow-x: hidden; overflow-y: auto; }
   .calendar      { min-width: 0; width: 100%; }
-
-  /* topbar wraps on mobile — adjust sticky offset accordingly */
-  :root { --topbar-h: 56px; }
 
   /* ── Week header: shorter labels on mobile ── */
   .weekday-head {
