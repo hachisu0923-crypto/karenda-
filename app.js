@@ -878,12 +878,14 @@ document.getElementById('js-edit-save-btn').addEventListener('click', async () =
 
   await updateEventInSupabase(editingEv);
   closeOverlay('js-edit-overlay');
+  closeOverlay('js-day-overlay');  // day overlay も閉じる
   renderExistingEvents();
   renderAll();
 });
 
 function closeEditModal() {
   closeOverlay('js-edit-overlay');
+  closeOverlay('js-day-overlay');  // day overlay も必ず閉じる（重なったまま残らないよう）
   editingEv = null;
 }
 
@@ -1151,9 +1153,15 @@ document.addEventListener('click',e=>{
 function openOverlay(id){document.getElementById(id).classList.add('is-open');}
 function closeOverlay(id){document.getElementById(id).classList.remove('is-open');}
 
-document.getElementById('js-day-modal-close').addEventListener('click',()=>closeOverlay('js-day-overlay'));
+document.getElementById('js-day-modal-close').addEventListener('click',()=>{
+  closeOverlay('js-day-overlay');
+  closeEditModal();
+});
 document.getElementById('js-day-overlay').addEventListener('click',e=>{
-  if (e.target===document.getElementById('js-day-overlay')) closeOverlay('js-day-overlay');
+  if (e.target===document.getElementById('js-day-overlay')){
+    closeOverlay('js-day-overlay');
+    closeEditModal();
+  }
 });
 
 // ── Navigation ────────────────────────────────────────────────────────────────
