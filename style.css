@@ -124,10 +124,14 @@ body {
 button { cursor: pointer; font-family: inherit; }
 input  { font-family: inherit; }
 
+/* Chrome / Safari */
 ::-webkit-scrollbar             { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track       { background: transparent; }
 ::-webkit-scrollbar-thumb       { background: var(--color-scrollbar); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-secondary); }
+
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: var(--color-scrollbar) transparent; }
 
 /* ============================================================
    LAYOUT
@@ -737,11 +741,15 @@ input  { font-family: inherit; }
   background: none;
   border: none;
   color: var(--color-text-disabled);
-  padding: 3px 5px;
+  padding: 6px 8px;          /* タップ/クリック領域を拡大 */
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   flex-shrink: 0;
+  cursor: pointer;
+  position: relative;        /* z-index を有効にするため */
+  z-index: 1;                /* ev-info より手前に確実に出す */
   transition: background-color 0.12s, color 0.12s;
+  pointer-events: auto;      /* 明示的に有効化 */
 }
 .ev-delete-btn:hover { background-color: var(--color-danger-subtle); color: var(--color-danger); }
 
@@ -751,24 +759,24 @@ input  { font-family: inherit; }
   align-items: center;
   gap: 1px;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
+  opacity: 1;
+  position: relative;  /* ボタンを確実に手前に */
+  z-index: 2;
 }
-.event-list-row:hover .ev-actions { opacity: 1; }
-
-/* Always show on touch (mobile) */
-@media (hover: none) { .ev-actions { opacity: 1; } }
 
 .ev-edit-btn {
   background: none;
   border: none;
   color: var(--color-text-disabled);
-  padding: 3px 5px;
+  padding: 6px 8px;          /* タップ/クリック領域を拡大 */
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   flex-shrink: 0;
-  transition: background-color 0.12s, color 0.12s;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: background-color 0.12s, color 0.12s;
+  pointer-events: auto;
 }
 .ev-edit-btn:hover { background-color: var(--color-accent-subtle); color: var(--color-accent); }
 
@@ -1588,7 +1596,7 @@ input  { font-family: inherit; }
   }
 
   /* ── Event list: larger tap targets on mobile ── */
-  .ev-actions { opacity: 1; gap: 4px; }   /* always visible on touch */
+  .ev-actions { gap: 4px; }
 
   .ev-edit-btn,
   .ev-delete-btn {
