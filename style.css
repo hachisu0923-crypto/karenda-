@@ -652,11 +652,16 @@ input  { font-family: inherit; }
   background: none;
   border: none;
   color: var(--color-text-secondary);
-  width: 26px; height: 26px;
+  width: 36px; height: 36px;
+  min-width: 36px; min-height: 36px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 5px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 16px;
   flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  -webkit-tap-highlight-color: transparent;
   transition: background-color 0.12s, color 0.12s;
 }
 .modal-close-btn:hover { background-color: var(--color-bg-hover); color: var(--color-text-primary); }
@@ -1603,6 +1608,12 @@ input  { font-family: inherit; }
 
   /* ── Event list: larger tap targets on mobile ── */
   .ev-actions { gap: 4px; }
+
+  .modal-close-btn {
+    width: 44px; height: 44px;
+    min-width: 44px; min-height: 44px;
+    font-size: 18px;
+  }
 
   .ev-edit-btn,
   .ev-delete-btn {
