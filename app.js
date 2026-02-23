@@ -25,7 +25,12 @@ const PRESET_COLORS = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id:1, name:'仕事',   color:'#e67700', type:'normal' },
+  { id:1, name:'仕事',   color:'#e67700', type:'normal',
+    templates:[
+      { label:'定例ミーティング', title:'定例ミーティング', start:'10:00', end:'11:00' },
+      { label:'ランチ', title:'ランチ', start:'12:00', end:'13:00' }
+    ]
+  },
   { id:2, name:'個人',   color:'#845ef7', type:'normal' },
   { id:3, name:'健康',   color:'#2f9e44', type:'normal' },
   { id:4, name:'締切',   color:'#e03131', type:'normal' },
@@ -657,6 +662,7 @@ function openDayModal(y,m,d) {
   renderExistingEvents();
   renderCatChips();
   renderTemplateChips();
+  renderEventTemplateChips();
   updateShiftTabVisibility();
   switchTab(activeTab);
   openOverlay('js-day-overlay');
@@ -715,6 +721,37 @@ function renderTemplateChips() {
       document.getElementById('js-shift-break').value=tpl.breakMin??0;
       updateWagePreview();
       switchTab('shift');
+    });
+    list.appendChild(chip);
+  });
+}
+
+// ── Event template chips (normal categories) ─────────────────────────────────
+
+function renderEventTemplateChips() {
+  const row=document.getElementById('js-ev-template-row');
+  const list=document.getElementById('js-ev-template-chip-list');
+  list.innerHTML='';
+  const all=[];
+  normalCats().forEach(cat=>(cat.templates||[]).forEach(tpl=>all.push({cat,tpl})));
+  if (!all.length){row.style.display='none';return;}
+  row.style.display='';
+  all.forEach(({cat,tpl})=>{
+    const chip=document.createElement('button');
+    chip.className='template-chip';
+    const timeStr=(tpl.start&&tpl.end)?`${tpl.start}–${tpl.end}`:(tpl.start||'');
+    chip.innerHTML=`
+      <span class="template-chip-dot" style="background:${cat.color}"></span>
+      <span>${escHtml(tpl.title||tpl.label||'テンプレート')}</span>
+      ${timeStr?`<span style="opacity:.5;font-size:10px">${timeStr}</span>`:''}`;
+    chip.addEventListener('click',()=>{
+      document.getElementById('js-ev-title').value=tpl.title||tpl.label||'';
+      document.getElementById('js-ev-time-start').value=tpl.start||'';
+      document.getElementById('js-ev-time-end').value=tpl.end||'';
+      // テンプレートのカテゴリを選択状態にする
+      selectedCatId=cat.id;
+      renderCatChips();
+      switchTab('event');
     });
     list.appendChild(chip);
   });
@@ -900,7 +937,6 @@ document.getElementById('js-edit-save-btn').addEventListener('click', async () =
 
 function closeEditModal() {
   closeOverlay('js-edit-overlay');
-  closeOverlay('js-day-overlay');  // day overlay も必ず閉じる（重なったまま残らないよう）
   editingEv = null;
 }
 
@@ -936,8 +972,9 @@ document.getElementById('js-ev-title').addEventListener('keydown',e=>{if(e.key==
 async function addEvent() {
   const title=document.getElementById('js-ev-title').value.trim();
   if (!title){document.getElementById('js-ev-title').focus();return;}
-  const time=document.getElementById('js-ev-time').value;
-  const ev={title,time,catId:selectedCatId};
+  const time=document.getElementById('js-ev-time-start').value;
+  const timeEnd=document.getElementById('js-ev-time-end').value;
+  const ev={title,time,timeEnd,catId:selectedCatId};
   if (!events[selectedKey]) events[selectedKey]=[];
   events[selectedKey].push(ev);
   await addEventToSupabase(selectedKey,ev);
@@ -1025,30 +1062,49 @@ function renderCatEditorList() {
       <input class="cat-wage-input" type="number" value="${cat.hourlyWage||''}" placeholder="1000" min="0" />
       <span class="cat-wage-unit">円 / h</span>`;
 
+    // テンプレートセクション（shift・normalどちらも表示）
     const tplSection=document.createElement('div');
-    tplSection.className='tpl-section'+(isS?' is-visible':'');
+    tplSection.className='tpl-section is-visible';
 
     function rebuildTpls() {
       tplSection.innerHTML='';
       const tpls=cat.templates||[];
       if (tpls.length){
         const lbl=document.createElement('div');
-        lbl.className='tpl-section-label'; lbl.textContent='シフトテンプレート';
+        lbl.className='tpl-section-label';
+        lbl.textContent=isS?'シフトテンプレート':'予定テンプレート';
         tplSection.appendChild(lbl);
       }
       tpls.forEach((tpl,ti)=>{
         const trow=document.createElement('div'); trow.className='tpl-row';
-        trow.innerHTML=`
-          <input class="tpl-input" type="text"   placeholder="名前"     value="${escHtml(tpl.label||'')}"  data-field="label" />
-          <input class="tpl-input" type="time"   value="${tpl.start||''}" data-field="start" />
-          <span  class="tpl-sep">〜</span>
-          <input class="tpl-input" type="time"   value="${tpl.end||''}"   data-field="end"   />
-          <input class="tpl-input tpl-break-input" type="number" value="${tpl.breakMin??''}" placeholder="休憩(分)" min="0" data-field="breakMin" />
-          <button class="tpl-delete-btn" title="削除">✕</button>`;
+        if (isS) {
+          // シフトテンプレート（従来通り：ラベル＋時刻＋休憩）
+          trow.innerHTML=`
+            <input class="tpl-input" type="text"   placeholder="名前"     value="${escHtml(tpl.label||'')}"  data-field="label" />
+            <input class="tpl-input" type="time"   value="${tpl.start||''}" data-field="start" />
+            <span  class="tpl-sep">〜</span>
+            <input class="tpl-input" type="time"   value="${tpl.end||''}"   data-field="end"   />
+            <input class="tpl-input tpl-break-input" type="number" value="${tpl.breakMin??''}" placeholder="休憩(分)" min="0" data-field="breakMin" />
+            <button class="tpl-delete-btn" title="削除">✕</button>`;
+        } else {
+          // 予定テンプレート（タイトル＋開始/終了時刻）
+          trow.innerHTML=`
+            <input class="tpl-input tpl-title-input" type="text"  placeholder="タイトル" value="${escHtml(tpl.title||tpl.label||'')}" data-field="title" />
+            <input class="tpl-input" type="time"  value="${tpl.start||''}" data-field="start" />
+            <span  class="tpl-sep">〜</span>
+            <input class="tpl-input" type="time"  value="${tpl.end||''}"   data-field="end"   />
+            <button class="tpl-delete-btn" title="削除">✕</button>`;
+        }
         trow.querySelectorAll('.tpl-input').forEach(inp=>{
           inp.addEventListener('input',e=>{
             const f=e.target.dataset.field;
-            editingCats[idx].templates[ti][f]=f==='breakMin'?parseInt(e.target.value)||0:e.target.value;
+            if (f==='breakMin') {
+              editingCats[idx].templates[ti][f]=parseInt(e.target.value)||0;
+            } else {
+              editingCats[idx].templates[ti][f]=e.target.value;
+              // normalの場合、titleをlabelにも同期（チップ表示用）
+              if (f==='title') editingCats[idx].templates[ti].label=e.target.value;
+            }
           });
         });
         trow.querySelector('.tpl-delete-btn').addEventListener('click',()=>{
@@ -1057,13 +1113,19 @@ function renderCatEditorList() {
         tplSection.appendChild(trow);
       });
       const addBtn=document.createElement('button');
-      addBtn.className='add-tpl-btn'; addBtn.textContent='＋ テンプレートを追加';
+      addBtn.className='add-tpl-btn';
+      addBtn.textContent=isS?'＋ テンプレートを追加':'＋ 予定テンプレートを追加';
       addBtn.addEventListener('click',()=>{
         if (!editingCats[idx].templates) editingCats[idx].templates=[];
-        editingCats[idx].templates.push({label:'',start:'',end:'',breakMin:0});
+        if (isS) {
+          editingCats[idx].templates.push({label:'',start:'',end:'',breakMin:0});
+        } else {
+          editingCats[idx].templates.push({label:'',title:'',start:'',end:''});
+        }
         rebuildTpls();
         requestAnimationFrame(()=>{
-          const ins=tplSection.querySelectorAll('.tpl-input[data-field="label"]');
+          const fieldSel=isS?'.tpl-input[data-field="label"]':'.tpl-input[data-field="title"]';
+          const ins=tplSection.querySelectorAll(fieldSel);
           ins[ins.length-1]?.focus();
         });
       });
@@ -1076,7 +1138,8 @@ function renderCatEditorList() {
     row.querySelectorAll('.cat-type-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
         editingCats[idx].type=btn.dataset.type;
-        if (btn.dataset.type!=='shift'){delete editingCats[idx].hourlyWage;delete editingCats[idx].templates;}
+        if (btn.dataset.type!=='shift'){delete editingCats[idx].hourlyWage;}
+        // テンプレートはタイプ切替時にクリアせず保持する
         renderCatEditorList();
       });
     });
@@ -1169,13 +1232,13 @@ function openOverlay(id){document.getElementById(id).classList.add('is-open');}
 function closeOverlay(id){document.getElementById(id).classList.remove('is-open');}
 
 document.getElementById('js-day-modal-close').addEventListener('click',()=>{
+  closeOverlay('js-edit-overlay');
   closeOverlay('js-day-overlay');
-  closeEditModal();
 });
 document.getElementById('js-day-overlay').addEventListener('click',e=>{
   if (e.target===document.getElementById('js-day-overlay')){
+    closeOverlay('js-edit-overlay');
     closeOverlay('js-day-overlay');
-    closeEditModal();
   }
 });
 
@@ -1190,11 +1253,16 @@ document.getElementById('js-open-cat-editor').addEventListener('click',openCatEd
 document.getElementById('js-theme-toggle').addEventListener('click',toggleTheme);
 
 document.addEventListener('keydown',e=>{
+  // Escapeキーはinput内でもモーダルを閉じられるようにする
+  if (e.key==='Escape'){
+    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeEditModal();closeColorPopup();
+    if (document.activeElement) document.activeElement.blur();
+    return;
+  }
   if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
   if (e.key==='ArrowLeft'){curDate.setMonth(curDate.getMonth()-1);renderAll();}
   if (e.key==='ArrowRight'){curDate.setMonth(curDate.getMonth()+1);renderAll();}
   if (e.key.toLowerCase()==='t'){curDate=new Date();renderAll();}
-  if (e.key==='Escape'){closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeEditModal();closeColorPopup();}
 });
 
 // ── XSS guard ─────────────────────────────────────────────────────────────────

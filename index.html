@@ -183,6 +183,10 @@
 
       <!-- Normal event form -->
       <div class="add-section" id="js-tab-event">
+        <div class="form-row" id="js-ev-template-row" style="display:none">
+          <label class="form-label">よく使う予定</label>
+          <div class="template-chip-list" id="js-ev-template-chip-list"></div>
+        </div>
         <div class="form-row">
           <label class="form-label" for="js-ev-title">タイトル</label>
           <input class="form-input" type="text" id="js-ev-title" placeholder="予定のタイトル" autocomplete="off" />
@@ -245,6 +249,81 @@
         </div>
         <button class="btn-primary" id="js-add-shift-btn">＋ シフト追加</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ EDIT EVENT MODAL ═══════════ -->
+<div class="overlay" id="js-edit-overlay">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-edit-modal-title">予定を編集</div>
+        <div class="modal-header-sub"   id="js-edit-modal-sub"></div>
+      </div>
+      <button class="modal-close-btn" id="js-edit-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Normal event edit form -->
+      <div class="add-section" id="js-edit-tab-event">
+        <div class="form-row">
+          <label class="form-label" for="js-edit-ev-title">タイトル</label>
+          <input class="form-input" type="text" id="js-edit-ev-title" placeholder="予定のタイトル" autocomplete="off" />
+        </div>
+        <div class="form-row form-row-2col">
+          <div>
+            <label class="form-label" for="js-edit-ev-time-start">開始時刻（任意）</label>
+            <input class="form-input" type="time" id="js-edit-ev-time-start" />
+          </div>
+          <div>
+            <label class="form-label" for="js-edit-ev-time-end">終了時刻（任意）</label>
+            <input class="form-input" type="time" id="js-edit-ev-time-end" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">カテゴリ</label>
+          <div class="cat-chip-list" id="js-edit-cat-chip-list"></div>
+        </div>
+      </div>
+
+      <!-- Shift edit form -->
+      <div class="add-section" id="js-edit-tab-shift" style="display:none">
+        <div class="form-row form-row-2col">
+          <div>
+            <label class="form-label" for="js-edit-shift-start">開始時刻</label>
+            <input class="form-input" type="time" id="js-edit-shift-start" />
+          </div>
+          <div>
+            <label class="form-label" for="js-edit-shift-end">終了時刻</label>
+            <input class="form-input" type="time" id="js-edit-shift-end" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="js-edit-shift-break">休憩時間（分）</label>
+          <input class="form-input" type="number" id="js-edit-shift-break" placeholder="0" min="0" max="480" />
+        </div>
+        <div class="wage-preview" id="js-edit-wage-preview">
+          <div class="wage-preview-row">
+            <span class="wage-preview-label">勤務時間</span>
+            <span class="wage-preview-val" id="js-edit-preview-hours">—</span>
+          </div>
+          <div class="wage-preview-row">
+            <span class="wage-preview-label">休憩（控除）</span>
+            <span class="wage-preview-val" id="js-edit-preview-break">—</span>
+          </div>
+          <div class="wage-preview-divider"></div>
+          <div class="wage-preview-row">
+            <span class="wage-preview-label">予想給料</span>
+            <span class="wage-preview-amount" id="js-edit-preview-pay">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="js-edit-cancel-btn">キャンセル</button>
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-edit-save-btn">保存する</button>
     </div>
   </div>
 </div>

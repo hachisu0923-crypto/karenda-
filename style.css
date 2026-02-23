@@ -1199,6 +1199,11 @@ input  { font-family: inherit; }
   width: 50px;
 }
 
+.tpl-title-input {
+  width: 110px;
+  flex-shrink: 1;
+}
+
 .tpl-delete-btn {
   background: none;
   border: none;
@@ -1460,6 +1465,7 @@ input  { font-family: inherit; }
 }
 .tpl-input:focus    { border-color: var(--color-accent); }
 .tpl-break-input    { width: 52px; }
+.tpl-title-input    { width: 110px; flex-shrink: 1; }
 .tpl-sep            { font-size: 11px; color: var(--color-text-secondary); flex-shrink: 0; }
 
 .tpl-delete-btn {
