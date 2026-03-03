@@ -1585,7 +1585,7 @@ input  { font-family: inherit; }
     font-size: 9.5px;
     gap: 2px;
   }
-  .event-pill-time { display: none; }   /* hide time on mobile */
+  .event-pill-time { font-size: 8px; }   /* compact time on mobile */
   .event-pill-name { font-size: 9px; }
 
   .more-badge { font-size: 9px; padding: 1px 3px; }
