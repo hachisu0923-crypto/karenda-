@@ -2469,8 +2469,14 @@ function _activeKey(){
 function _loadActiveTodos(){
   // localStorage fallback（ログインしていない場合 / 後方互換）
   if(!_todoState) return;
+  const { userId, scope } = _todoState;
   const key = _activeKey();
-  _todoState.todos = loadTodos(_todoState.userId, _todoState.scope, key);
+  // 今日スコープはテンプレート方式なので専用関数で読み込む
+  if (scope === 'day') {
+    _todoState.todos = _getDayTodosForDate(userId, key);
+  } else {
+    _todoState.todos = loadTodos(userId, scope, key);
+  }
 }
 
 function _persistActiveTodos(){
