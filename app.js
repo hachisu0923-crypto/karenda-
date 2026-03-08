@@ -110,6 +110,25 @@ let activeTab      = 'event';
 let currentUser    = null;
 let currentView    = 'month';  // 'month' | 'day'
 
+// ── Japan Holidays ─────────────────────────────────────────────────────────────
+
+const _holidays = {};  // { year: { 'YYYY-MM-DD': '祝日名' } }
+
+async function fetchHolidays(year) {
+  if (_holidays[year] !== undefined) return;
+  _holidays[year] = {};  // mark in-progress to prevent duplicate requests
+  try {
+    const res = await fetch(`https://holidays-jp.github.io/api/v1/${year}/date.json`);
+    if (!res.ok) return;
+    _holidays[year] = await res.json();
+  } catch(e) { console.warn('祝日取得失敗', e); }
+}
+
+function getHolidayName(key) {
+  // key = 'YYYY-MM-DD'
+  return (_holidays[+key.slice(0,4)] || {})[key] || '';
+}
+
 // ── Local helpers (theme / misc only — data lives in Supabase) ────────────────
 
 function loadLocalJSON(key) {
@@ -461,6 +480,9 @@ async function showApp(user) {
   initBottomPanelTabs();
 
   await loadFromSupabase();
+  // 祝日データをフェッチ（今年・来年）してから再描画
+  const _cy = new Date().getFullYear();
+  Promise.all([fetchHolidays(_cy), fetchHolidays(_cy + 1)]).then(() => renderAll());
   renderAll();
 }
 
@@ -767,6 +789,14 @@ function buildCell(y,m,d,isOther,isToday) {
   const numEl=document.createElement('div');
   numEl.className='day-num'; numEl.textContent=d;
   cell.appendChild(numEl);
+
+  const _hName = getHolidayName(key);
+  if (_hName) {
+    const hEl = document.createElement('div');
+    hEl.className = 'day-holiday';
+    hEl.textContent = _hName;
+    cell.appendChild(hEl);
+  }
 
   // TODO completion bar
   {
@@ -1604,7 +1634,8 @@ function renderAll(){
   renderMain();
   renderMini();
   renderSidebar();
-  if (typeof currentView !== 'undefined' && currentView === 'day') renderDayView();
+  if (currentView === 'day')  renderDayView();
+  if (currentView === 'week') renderWeekView();
 
   // Keep TODO panel in sync with the currently selected day / month navigation
   if (typeof _todoState !== 'undefined' && _todoState) {
@@ -1644,15 +1675,21 @@ const DAY_END   = 24;       // 24:00
 function switchView(view) {
   currentView = view;
   document.getElementById('js-month-view').style.display = view === 'month' ? '' : 'none';
+  document.getElementById('js-week-view').style.display  = view === 'week'  ? '' : 'none';
   document.getElementById('js-day-view').style.display   = view === 'day'   ? '' : 'none';
   document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
   if (view === 'day') {
-    dvDate = new Date(curDate); // sync to current month view date
+    dvDate = new Date(curDate);
     renderDayView();
+  }
+  if (view === 'week') {
+    wvDate = new Date(curDate);
+    renderWeekView();
   }
 }
 
 document.getElementById('js-tab-month').addEventListener('click', () => switchView('month'));
+document.getElementById('js-tab-week').addEventListener('click',  () => switchView('week'));
 document.getElementById('js-tab-day').addEventListener('click',   () => switchView('day'));
 
 // ── Day view navigation ───────────────────────────────────
@@ -1701,9 +1738,11 @@ function renderDayView() {
 
   // Header date
   const dateEl = document.getElementById('js-dv-date');
+  const _dvHoliday = getHolidayName(key);
   dateEl.innerHTML = `
     <span class="dv-date-num ${isToday ? 'is-today' : ''} ${dow===0?'is-sun':dow===6?'is-sat':''}">${d}</span>
-    <span class="dv-date-label">${y}年 ${m+1}月 &nbsp;${DAYS[dow]}曜日</span>`;
+    <span class="dv-date-label">${y}年 ${m+1}月 &nbsp;${DAYS[dow]}曜日</span>
+    ${_dvHoliday ? `<span class="dv-holiday-badge">${escHtml(_dvHoliday)}</span>` : ''}`;
 
   // Time column
   const timeCol = document.getElementById('js-dv-time-col');
@@ -1862,6 +1901,211 @@ function renderDayView() {
 }
 
 // Re-render day view is already handled inside renderAll() above.
+
+
+// ════════════════════════════════════════════════════════════
+//  WEEK VIEW
+// ════════════════════════════════════════════════════════════
+
+let wvDate = new Date();
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay()); // go to Sunday
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function renderWeekView() {
+  const weekStart = getWeekStart(wvDate);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  // Date range label
+  const wEnd = new Date(weekStart); wEnd.setDate(wEnd.getDate() + 6);
+  const rangeEl = document.getElementById('js-wv-range');
+  if (weekStart.getMonth() === wEnd.getMonth()) {
+    rangeEl.textContent = `${weekStart.getFullYear()}年 ${weekStart.getMonth()+1}月 ${weekStart.getDate()}日 〜 ${wEnd.getDate()}日`;
+  } else {
+    rangeEl.textContent = `${weekStart.getFullYear()}年 ${weekStart.getMonth()+1}月 ${weekStart.getDate()}日 〜 ${wEnd.getFullYear()}年 ${wEnd.getMonth()+1}月 ${wEnd.getDate()}日`;
+  }
+
+  // Build 7 date objects (Sun–Sat)
+  const days = Array.from({length: 7}, (_, i) => {
+    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d;
+  });
+
+  // Ensure holidays are loaded for all years in this week
+  [...new Set(days.map(d => d.getFullYear()))].forEach(y => {
+    if (!_holidays[y]) fetchHolidays(y).then(() => { if (currentView === 'week') renderWeekView(); });
+  });
+
+  // ── Column headers ──────────────────────────────────────
+  const headsEl = document.getElementById('js-wv-col-heads');
+  headsEl.innerHTML = '';
+  const gutter = document.createElement('div'); gutter.className = 'wv-gutter';
+  headsEl.appendChild(gutter);
+
+  days.forEach(d => {
+    const dow = d.getDay();
+    const isToday = d.getTime() === today.getTime();
+    const key = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+    const holidayName = getHolidayName(key);
+    const head = document.createElement('div');
+    head.className = ['wv-col-head', isToday ? 'is-today' : '', dow===0 ? 'is-sun' : '', dow===6 ? 'is-sat' : ''].filter(Boolean).join(' ');
+    head.innerHTML =
+      `<span class="wv-head-dow">${DAYS_JA[dow]}</span>` +
+      `<span class="wv-head-num${isToday ? ' is-today' : ''}">${d.getDate()}</span>` +
+      (holidayName ? `<span class="wv-head-holiday">${escHtml(holidayName)}</span>` : '');
+    head.addEventListener('click', () => { dvDate = new Date(d); switchView('day'); });
+    headsEl.appendChild(head);
+  });
+
+  // ── All-day events row ──────────────────────────────────
+  const alldayArea = document.getElementById('js-wv-allday-area');
+  const alldayCols = document.getElementById('js-wv-allday-cols');
+  alldayCols.innerHTML = '';
+  let hasAnyAllday = false;
+  days.forEach(d => {
+    const key = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+    const allDayEvs = (events[key] || []).filter(ev => {
+      const s = isShift(ev.catId) ? timeStrToMin(ev.shiftStart) : timeStrToMin(ev.time);
+      return s === null;
+    });
+    const col = document.createElement('div');
+    col.className = 'wv-allday-col';
+    allDayEvs.forEach(ev => {
+      const cat = getCat(ev.catId) || { color: '#888', name: '?' };
+      const chip = document.createElement('div');
+      chip.className = 'wv-allday-chip';
+      chip.style.background = cat.color;
+      chip.textContent = ev.title || cat.name;
+      chip.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev); });
+      col.appendChild(chip);
+      hasAnyAllday = true;
+    });
+    alldayCols.appendChild(col);
+  });
+  alldayArea.style.display = hasAnyAllday ? '' : 'none';
+
+  // ── Time column ─────────────────────────────────────────
+  const timeCol = document.getElementById('js-wv-time-col');
+  timeCol.innerHTML = '';
+  for (let h = DAY_START; h <= DAY_END; h++) {
+    const el = document.createElement('div');
+    el.className = 'dv-hour-label';
+    el.style.top = `${(h - DAY_START) * HOUR_H}px`;
+    el.textContent = h < 24 ? `${String(h).padStart(2,'0')}:00` : '';
+    timeCol.appendChild(el);
+  }
+
+  // ── Day columns (timed events) ──────────────────────────
+  const daysEl = document.getElementById('js-wv-days');
+  daysEl.innerHTML = '';
+  daysEl.style.height = `${(DAY_END - DAY_START) * HOUR_H}px`;
+
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+  days.forEach(d => {
+    const dow = d.getDay();
+    const isToday = d.getTime() === today.getTime();
+    const key = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+    const dayEvs = sortEvs(events[key] || []);
+
+    const col = document.createElement('div');
+    col.className = ['wv-day-col', isToday ? 'is-today' : '', dow===0 ? 'is-sun' : '', dow===6 ? 'is-sat' : ''].filter(Boolean).join(' ');
+
+    // Grid lines
+    for (let h = DAY_START; h <= DAY_END; h++) {
+      const line = document.createElement('div');
+      line.className = 'dv-hour-line' + (h === 0 ? ' is-first' : '');
+      line.style.top = `${(h - DAY_START) * HOUR_H}px`;
+      col.appendChild(line);
+    }
+    for (let h = DAY_START; h < DAY_END; h++) {
+      const line = document.createElement('div');
+      line.className = 'dv-half-line';
+      line.style.top = `${(h - DAY_START) * HOUR_H + HOUR_H / 2}px`;
+      col.appendChild(line);
+    }
+
+    // Timed events with overlap layout
+    const timedEvs = [];
+    dayEvs.forEach(ev => {
+      const startMin = isShift(ev.catId) ? timeStrToMin(ev.shiftStart) : timeStrToMin(ev.time);
+      if (startMin !== null) timedEvs.push({ ev, startMin });
+    });
+    const placed = timedEvs.map(item => {
+      const cat = getCat(item.ev.catId) || { color: '#888', name: '?' };
+      const endMin = isShift(item.ev.catId)
+        ? timeStrToMin(item.ev.shiftEnd)
+        : (timeStrToMin(item.ev.timeEnd) ?? item.startMin + 60);
+      return { ...item, endMin, cat, col: 0, totalCols: 1 };
+    });
+    for (let i = 0; i < placed.length; i++) {
+      const cols = [];
+      for (let j = 0; j < i; j++) {
+        if (placed[j].endMin > placed[i].startMin && placed[j].startMin < placed[i].endMin) cols.push(placed[j].col);
+      }
+      let c = 0; while (cols.includes(c)) c++;
+      placed[i].col = c;
+    }
+    for (let i = 0; i < placed.length; i++) {
+      let max = placed[i].col;
+      for (let j = 0; j < placed.length; j++) {
+        if (j !== i && placed[j].endMin > placed[i].startMin && placed[j].startMin < placed[i].endMin) max = Math.max(max, placed[j].col);
+      }
+      placed[i].totalCols = max + 1;
+    }
+    placed.forEach(({ ev, startMin, endMin, cat, col: evCol, totalCols }) => {
+      const top    = minToY(startMin);
+      const height = (Math.max(endMin - startMin, 30) / 60) * HOUR_H;
+      const width  = `calc((100% - 2px) / ${totalCols} - 2px)`;
+      const left   = `calc((100% - 2px) / ${totalCols} * ${evCol} + ${evCol > 0 ? 2 : 0}px)`;
+      const block  = document.createElement('div');
+      block.className = 'dv-event-block';
+      block.style.cssText = `top:${top}px;height:${Math.max(height,22)}px;width:${width};left:${left};background:${cat.color};`;
+      const timeStr   = isShift(ev.catId) ? `${ev.shiftStart}–${ev.shiftEnd}` : (ev.timeEnd ? `${ev.time}–${ev.timeEnd}` : minToTimeStr(startMin));
+      const titleText = isShift(ev.catId) ? cat.name : (ev.title || cat.name);
+      const { pay }   = isShift(ev.catId) ? calcShift(ev) : { pay: 0 };
+      const payLabel  = isShift(ev.catId) && pay > 0 ? `<span class="dv-block-pay">${fmtYen(pay)}</span>` : '';
+      block.innerHTML = `<span class="dv-block-time">${escHtml(timeStr)}</span><span class="dv-block-title">${escHtml(titleText)}</span>${payLabel}`;
+      block.addEventListener('click', e => { e.stopPropagation(); openEditModal(ev); });
+      col.appendChild(block);
+    });
+
+    // Now-line for today
+    if (isToday) {
+      const nl = document.createElement('div');
+      nl.className = 'dv-now-line'; nl.style.top = `${minToY(nowMin)}px`;
+      col.appendChild(nl);
+    }
+
+    // Click to add event
+    col.addEventListener('click', () => openDayModal(d.getFullYear(), d.getMonth(), d.getDate()));
+    daysEl.appendChild(col);
+  });
+
+  // Scroll to 7:00
+  setTimeout(() => {
+    const scroll = document.getElementById('js-wv-scroll');
+    if (scroll) scroll.scrollTop = Math.max(0, minToY(7 * 60) - 40);
+  }, 50);
+}
+
+// ── Week view navigation ──────────────────────────────────
+
+document.getElementById('js-wv-prev').addEventListener('click', () => {
+  wvDate.setDate(wvDate.getDate() - 7); renderWeekView();
+});
+document.getElementById('js-wv-next').addEventListener('click', () => {
+  wvDate.setDate(wvDate.getDate() + 7); renderWeekView();
+});
+document.getElementById('js-wv-today').addEventListener('click', () => {
+  wvDate = new Date(); renderWeekView();
+});
+document.getElementById('js-wv-add').addEventListener('click', () => {
+  openDayModal(wvDate.getFullYear(), wvDate.getMonth(), wvDate.getDate());
+});
 
 
 // ──────────────────────────────────────────────────────────────────────────────
