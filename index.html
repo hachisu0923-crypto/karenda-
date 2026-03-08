@@ -116,6 +116,7 @@
         <!-- View mode tabs -->
         <div class="view-tab-bar">
           <button class="view-tab is-active" id="js-tab-month" data-view="month">月</button>
+          <button class="view-tab" id="js-tab-week"  data-view="week">週</button>
           <button class="view-tab" id="js-tab-day"   data-view="day">日</button>
         </div>
         <!-- Sync indicator -->
@@ -137,6 +138,26 @@
           <div class="weekday-head is-sat">Sat</div>
         </div>
         <div class="cal-grid" id="js-cal-grid"></div>
+      </div>
+    </div>
+
+    <!-- ── Week view ── -->
+    <div class="week-view-wrap" id="js-week-view" style="display:none">
+      <div class="wv-nav">
+        <button class="btn-icon" id="js-wv-prev">‹</button>
+        <div class="wv-range" id="js-wv-range"></div>
+        <button class="btn-icon" id="js-wv-next">›</button>
+        <button class="btn-text" id="js-wv-today">今日</button>
+        <button class="btn-primary dv-add-btn" id="js-wv-add">＋ 予定を追加</button>
+      </div>
+      <div class="wv-col-heads" id="js-wv-col-heads"></div>
+      <div class="wv-allday-area" id="js-wv-allday-area" style="display:none">
+        <div class="wv-gutter"></div>
+        <div class="wv-allday-cols" id="js-wv-allday-cols"></div>
+      </div>
+      <div class="wv-scroll" id="js-wv-scroll">
+        <div class="wv-time-col" id="js-wv-time-col"></div>
+        <div class="wv-days" id="js-wv-days"></div>
       </div>
     </div>
 

@@ -655,6 +655,31 @@ input  { font-family: inherit; }
 /* shift pill: slightly different left border to distinguish */
 .event-pill.is-shift { border-left: 3px solid rgba(255,255,255,0.4); }
 
+/* ── Holiday name in month cell ──────────────────────────── */
+.day-holiday {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-sun);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  padding: 0 2px;
+  margin-top: -1px;
+}
+
+/* ── Holiday badge in day view header ────────────────────── */
+.dv-holiday-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-sun);
+  background: color-mix(in srgb, var(--color-sun) 12%, transparent);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
 /* ── Drag & drop ─────────────────────────────────────────── */
 .day-cell.is-drag-over {
   outline: 2px dashed var(--color-accent);
@@ -1998,6 +2023,179 @@ input  { font-family: inherit; }
   height: 10px;
   border-radius: 50%;
   background: var(--color-accent);
+}
+
+/* ============================================================
+   WEEK VIEW
+   ============================================================ */
+
+.week-view-wrap {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── Nav bar ── */
+.wv-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border-strong);
+  background: var(--color-bg-base);
+  flex-shrink: 0;
+}
+.wv-range {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* ── Sticky column headers ── */
+.wv-col-heads {
+  display: flex;
+  border-bottom: 1px solid var(--color-border-strong);
+  background: var(--color-bg-base);
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  flex-shrink: 0;
+}
+.wv-gutter {
+  width: 52px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border-strong);
+}
+.wv-col-head {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 2px;
+  gap: 2px;
+  border-right: 1px solid var(--color-border-soft);
+  cursor: pointer;
+  min-width: 0;
+  transition: background-color 0.1s;
+}
+.wv-col-head:last-child { border-right: none; }
+.wv-col-head:hover    { background: var(--color-bg-hover); }
+.wv-col-head.is-today { background: var(--color-bg-today); }
+
+.wv-head-dow {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wv-col-head.is-sun .wv-head-dow { color: var(--color-sun); }
+.wv-col-head.is-sat .wv-head-dow { color: var(--color-sat); }
+
+.wv-head-num {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 8px;
+  color: var(--color-text-primary);
+}
+.wv-head-num.is-today { background: var(--color-accent); color: #fff; }
+.wv-col-head.is-sun .wv-head-num:not(.is-today) { color: var(--color-sun); }
+.wv-col-head.is-sat .wv-head-num:not(.is-today) { color: var(--color-sat); }
+
+.wv-head-holiday {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-sun);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+/* ── All-day events row ── */
+.wv-allday-area {
+  display: flex;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: var(--color-bg-base);
+  flex-shrink: 0;
+}
+.wv-allday-cols {
+  flex: 1;
+  display: flex;
+}
+.wv-allday-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 2px;
+  border-right: 1px solid var(--color-border-soft);
+  min-width: 0;
+}
+.wv-allday-col:last-child { border-right: none; }
+.wv-allday-chip {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: filter 0.1s;
+}
+.wv-allday-chip:hover { filter: brightness(0.88); }
+
+/* ── Scrollable time grid ── */
+.wv-scroll {
+  flex: 1;
+  display: flex;
+  overflow-y: auto;
+  position: relative;
+}
+.wv-time-col {
+  width: 52px;
+  flex-shrink: 0;
+  position: relative;
+  border-right: 1px solid var(--color-border-strong);
+}
+
+/* ── 7 day columns ── */
+.wv-days {
+  flex: 1;
+  display: flex;
+  position: relative;
+  min-width: 0;
+}
+.wv-day-col {
+  flex: 1;
+  position: relative;
+  border-right: 1px solid var(--color-border-soft);
+  min-width: 0;
+  cursor: pointer;
+}
+.wv-day-col:last-child { border-right: none; }
+.wv-day-col.is-today  { background: var(--color-bg-today); }
+
+/* narrow screen: shrink event block text in week view */
+@media (max-width: 900px) {
+  .wv-day-col .dv-block-time  { font-size: 8px; }
+  .wv-day-col .dv-block-title { font-size: 10px; }
+  .wv-head-num { font-size: 13px; width: 24px; height: 24px; }
+}
+@media (max-width: 600px) {
+  .wv-nav { padding: 6px 8px; }
+  .wv-range { font-size: 12px; }
 }
 
 /* ============================================================
