@@ -401,6 +401,40 @@ async function updateEventInSupabase(ev) {
   }
 }
 
+// ── Supabase: move event to another date ──────────────────────────────────────
+
+async function updateEventDateInSupabase(dbId, newKey) {
+  if (!dbId) return;
+  setSyncStatus('syncing');
+  try {
+    const m = await detectEventColumns();
+    const { error } = await db.from('events').update({
+      [m.dateKey]: newKey
+    }).eq('id', dbId);
+    if (error) throw error;
+    setSyncStatus('synced');
+  } catch(e) {
+    console.error('Move event error:', e);
+    setSyncStatus('error');
+    alert('予定の移動に失敗しました。\n' + (e.message || JSON.stringify(e)));
+  }
+}
+
+async function moveEventToDate(dbId, srcKey, destKey) {
+  if (!dbId || srcKey === destKey) return;
+  const srcEvs = events[srcKey] || [];
+  const idx = srcEvs.findIndex(ev => String(ev._dbId) === String(dbId));
+  if (idx === -1) return;
+  const ev = srcEvs.splice(idx, 1)[0];
+  if (!srcEvs.length) delete events[srcKey]; else events[srcKey] = srcEvs;
+  if (!events[destKey]) events[destKey] = [];
+  events[destKey].push(ev);
+  renderMain();
+  renderMini();
+  renderSalarySummary();
+  await updateEventDateInSupabase(dbId, destKey);
+}
+
 function applyTheme(dark) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 }
@@ -721,6 +755,14 @@ function buildCell(y,m,d,isOther,isToday) {
   const cell=document.createElement('div');
   cell.className=['day-cell',isOther?'is-other-month':'',isToday?'is-today':'',
     dow===0?'is-sun':'',dow===6?'is-sat':''].filter(Boolean).join(' ');
+  cell.dataset.dateKey = key;
+  cell.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect='move'; cell.classList.add('is-drag-over'); });
+  cell.addEventListener('dragleave', e => { if (!cell.contains(e.relatedTarget)) cell.classList.remove('is-drag-over'); });
+  cell.addEventListener('drop', async e => {
+    e.preventDefault(); cell.classList.remove('is-drag-over');
+    let data; try { data=JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+    await moveEventToDate(data.dbId, data.srcKey, key);
+  });
 
   const numEl=document.createElement('div');
   numEl.className='day-num'; numEl.textContent=d;
@@ -777,6 +819,16 @@ function buildCell(y,m,d,isOther,isToday) {
           :`<span class="event-pill-dot"></span><span class="event-pill-name">${escHtml(ev.title)}</span>`;
       }
       pill.addEventListener('click',e=>{e.stopPropagation();openDayModal(y,m,d);});
+      if (ev._dbId) {
+        pill.draggable = true;
+        pill.addEventListener('dragstart', e => {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', JSON.stringify({ dbId: ev._dbId, srcKey: key }));
+          setTimeout(() => pill.classList.add('is-dragging'), 0);
+        });
+        pill.addEventListener('dragend', () => pill.classList.remove('is-dragging'));
+      }
       evList.appendChild(pill);
     });
     if (dayEvs.length>3) {
