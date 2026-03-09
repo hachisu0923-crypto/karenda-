@@ -177,36 +177,15 @@
       </div>
     </div>
 
-    <!-- ── Bottom panel: TODO / Task / 家計簿 ── -->
+    <!-- ── Bottom panel: Task / 家計簿 ── -->
     <div class="bottom-panel">
       <div class="bp-tab-bar">
-        <button class="bp-tab is-active" data-bp="todo">TODO</button>
-        <button class="bp-tab" data-bp="task">タスク</button>
+        <button class="bp-tab is-active" data-bp="task">タスク</button>
         <button class="bp-tab" data-bp="budget">家計簿</button>
       </div>
 
-      <!-- ── TODO section ── -->
-      <div id="js-bp-todo" class="bp-section">
-        <div class="bp-section-head">
-          <span class="bp-section-title" id="js-todo-title">今日のTODO</span>
-          <span class="bp-progress" id="js-todo-progress">0/0</span>
-        </div>
-        <div class="todo-tabs">
-          <button class="todo-tab is-active" id="js-todo-scope-day">今日</button>
-          <button class="todo-tab" id="js-todo-scope-week">今週</button>
-          <button class="todo-tab" id="js-todo-scope-month">今月</button>
-        </div>
-        <div id="js-todo-graph" class="todo-graph-wrap"></div>
-        <div class="weekly-todo-list" id="js-todo-list"></div>
-        <form class="bp-add-form" id="js-todo-add-form" autocomplete="off">
-          <input class="bp-add-input" id="js-todo-input" type="text" placeholder="TODOを追加…" />
-          <button class="bp-add-btn" type="submit">追加</button>
-        </form>
-        <div class="bp-hint" id="js-todo-hint"></div>
-      </div>
-
       <!-- ── Task section ── -->
-      <div id="js-bp-task" class="bp-section" style="display:none">
+      <div id="js-bp-task" class="bp-section">
         <div class="bp-section-head">
           <span class="bp-section-title">タスク</span>
           <span class="bp-progress" id="js-task-progress">0/0</span>
