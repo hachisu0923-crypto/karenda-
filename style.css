@@ -543,26 +543,6 @@ input  { font-family: inherit; }
 .day-cell.is-sat .day-num   { color: var(--color-sat); }
 .day-cell.is-today .day-num { color: #fff !important; }
 
-/* — TODO completion bar on calendar cell — */
-.day-todo-bar {
-  width: 100%;
-  height: 3px;
-  background: var(--color-border-soft);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 2px;
-  flex-shrink: 0;
-}
-.day-todo-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-  min-width: 2px;
-}
-.day-todo-fill.is-full { background: #22c55e; }
-.day-todo-fill.is-half { background: #f59e0b; }
-.day-todo-fill.is-low  { background: #ef4444; }
-
 /* — Task pills on calendar cell — */
 .day-tasks {
   display: flex;
@@ -2257,162 +2237,6 @@ input  { font-family: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Scope tabs (今日 / 今週 / 今月) ── */
-.todo-tabs {
-  display: flex;
-  gap: 2px;
-  background: var(--color-bg-hover);
-  border-radius: 7px;
-  padding: 2.5px;
-  margin-bottom: 10px;
-  max-width: 250px;
-}
-
-.todo-tab {
-  flex: 1;
-  background: none;
-  border: none;
-  border-radius: 5px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 0;
-  cursor: pointer;
-  transition: background-color 0.12s, color 0.12s;
-  text-align: center;
-}
-.todo-tab.is-active {
-  background: var(--color-bg-base);
-  color: var(--color-text-primary);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-}
-.todo-tab:not(.is-active):hover { color: var(--color-text-primary); }
-
-/* ── TODO 達成率 棒グラフ ── */
-.todo-graph-wrap {
-  overflow: hidden;
-  transition: max-height 0.2s ease;
-}
-
-.todo-graph {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 52px;
-  margin-bottom: 10px;
-  padding: 4px 0 0;
-}
-
-.todo-graph-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  height: 100%;
-  cursor: default;
-}
-.todo-graph-col.is-today .todo-graph-bar-wrap {
-  outline: 1.5px solid var(--color-accent);
-  outline-offset: 1px;
-  border-radius: 3px;
-}
-
-.todo-graph-bar-wrap {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  background: var(--color-border-soft);
-  border-radius: 2px;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.todo-graph-bar {
-  width: 100%;
-  min-height: 0;
-  border-radius: 2px 2px 0 0;
-  transition: height 0.3s ease;
-}
-.todo-graph-bar.is-full { background: #22c55e; }
-.todo-graph-bar.is-half { background: #f59e0b; }
-.todo-graph-bar.is-low  { background: #ef4444; }
-
-.todo-graph-day {
-  font-size: 7px;
-  color: var(--color-text-secondary);
-  line-height: 1;
-  flex-shrink: 0;
-}
-.todo-graph-col.is-today .todo-graph-day {
-  color: var(--color-accent);
-  font-weight: 700;
-}
-
-/* ── Shared TODO item list ── */
-.weekly-todo-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.weekly-todo-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.1s;
-  user-select: none;
-}
-.weekly-todo-item:hover { background-color: var(--color-bg-hover); }
-.weekly-todo-item:hover .weekly-todo-del { opacity: 1; }
-
-.weekly-todo-check {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  border: 1.5px solid var(--color-border-strong);
-  flex-shrink: 0;
-  transition: background-color 0.15s, border-color 0.15s;
-  position: relative;
-}
-.weekly-todo-item:hover .weekly-todo-check { border-color: var(--color-accent); }
-.weekly-todo-item.done .weekly-todo-check {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-.weekly-todo-item.done .weekly-todo-check::after {
-  content: '✓';
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: #fff; line-height: 1;
-}
-
-.weekly-todo-text {
-  flex: 1; font-size: 13px; color: var(--color-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  min-width: 0; line-height: 1.4; transition: color 0.15s;
-}
-.weekly-todo-item.done .weekly-todo-text {
-  text-decoration: line-through; color: var(--color-text-disabled);
-}
-
-.weekly-todo-del {
-  background: none; border: none;
-  color: var(--color-text-disabled); font-size: 12px;
-  padding: 3px 6px; border-radius: 4px;
-  flex-shrink: 0; opacity: 0; cursor: pointer;
-  transition: opacity 0.1s, background-color 0.12s, color 0.12s;
-}
-.weekly-todo-del:hover {
-  background-color: var(--color-danger-subtle); color: var(--color-danger);
-}
-
 /* ── Add form (shared) ── */
 .bp-add-form {
   display: flex;
@@ -2684,8 +2508,8 @@ input  { font-family: inherit; }
   .bottom-panel { padding: 0 10px 20px; }
   .bp-section { max-width: 100%; }
   .bp-tab { padding: 8px 12px; font-size: 12px; }
-  .todo-tabs, .task-filter-bar { max-width: 100%; }
-  .weekly-todo-del, .task-del { opacity: 0.6; }
+  .task-filter-bar { max-width: 100%; }
+  .task-del { opacity: 0.6; }
   .task-add-form { gap: 5px; }
   .task-date-input { width: 100px; font-size: 11px; }
   .task-priority-select { width: 46px; font-size: 11px; }
