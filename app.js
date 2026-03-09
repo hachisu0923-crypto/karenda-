@@ -2210,15 +2210,14 @@ function getWeekRangeLabel(weekKey){
 }
 
 function getDayKeyFromSelected(){
-  // Prefer selected day on the calendar, else today
-  if (selectedKey && /^\d{4}-\d{2}-\d{2}$/.test(selectedKey)) return selectedKey;
+  // Always return today — "今日のTODO" should show today regardless of
+  // which calendar date the user has clicked.
   return formatYMD(new Date());
 }
 
 function getWeekKeyFromSelected(){
-  const dk = getDayKeyFromSelected();
-  const [y,m,d] = dk.split('-').map(Number);
-  return getWeekKeyFromDate(new Date(y, m-1, d));
+  // Always return the current week — "今週のTODO" should show this week.
+  return getWeekKeyFromDate(new Date());
 }
 
 function getMonthKeyFromContext(){
