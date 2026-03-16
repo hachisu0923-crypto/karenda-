@@ -1618,26 +1618,6 @@ document.getElementById('js-day-overlay').addEventListener('click',e=>{
 document.getElementById('js-prev-month').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()-1);renderAll();});
 document.getElementById('js-next-month').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()+1);renderAll();});
 
-// ── Swipe navigation (month view) ─────────────────────────────────────────────
-(function() {
-  const el = document.getElementById('js-month-view');
-  let startX = 0, startY = 0;
-  el.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-  }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      curDate.setMonth(curDate.getMonth() + 1);
-    } else {
-      curDate.setMonth(curDate.getMonth() - 1);
-    }
-    renderAll();
-  }, { passive: true });
-})();
 document.getElementById('js-today').addEventListener('click',()=>{curDate=new Date();renderAll();});
 document.getElementById('js-mini-prev').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()-1);renderAll();});
 document.getElementById('js-mini-next').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()+1);renderAll();});
