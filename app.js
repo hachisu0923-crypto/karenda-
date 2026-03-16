@@ -2211,7 +2211,12 @@ async function updateTaskInSupabase(task) {
   if (!currentUser || !task._dbId) return;
   setSyncStatus('syncing');
   try {
-    const { error } = await db.from('tasks').update({ done: task.done }).eq('id', task._dbId);
+    const { error } = await db.from('tasks').update({
+      done: task.done,
+      title: task.title,
+      due_date: task.dueDate || '',
+      priority: task.priority || 'medium'
+    }).eq('id', task._dbId);
     if (error) throw error;
     setSyncStatus('synced');
   } catch (e) { console.error('Task update error:', e); setSyncStatus('error'); }
