@@ -1750,6 +1750,17 @@ function renderAll(){
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 applyTheme(isDark);
+
+// ── Today-date icon ───────────────────────────────────────────────────────────
+function updateTodayIcon() {
+  const today = new Date();
+  const d = today.getDate();
+  document.querySelectorAll('.js-today-date').forEach(el => el.textContent = d);
+  // Schedule next update at midnight
+  const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
+  setTimeout(updateTodayIcon, midnight - Date.now());
+}
+updateTodayIcon();
 // Auth state change will trigger showApp() → loadFromSupabase() → renderAll()
 
 // ════════════════════════════════════════════════════════════
