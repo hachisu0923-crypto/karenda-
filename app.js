@@ -1617,6 +1617,7 @@ document.getElementById('js-day-overlay').addEventListener('click',e=>{
 
 document.getElementById('js-prev-month').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()-1);renderAll();});
 document.getElementById('js-next-month').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()+1);renderAll();});
+
 document.getElementById('js-today').addEventListener('click',()=>{curDate=new Date();renderAll();});
 document.getElementById('js-mini-prev').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()-1);renderAll();});
 document.getElementById('js-mini-next').addEventListener('click',()=>{curDate.setMonth(curDate.getMonth()+1);renderAll();});
