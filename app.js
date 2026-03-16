@@ -1800,6 +1800,27 @@ document.getElementById('js-dv-add').addEventListener('click', () => {
   openDayModal(dvDate.getFullYear(), dvDate.getMonth(), dvDate.getDate());
 });
 
+// ── Swipe navigation (day view) ───────────────────────────────────────────────
+(function() {
+  const el = document.getElementById('js-day-view');
+  let startX = 0, startY = 0;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) {
+      dvDate.setDate(dvDate.getDate() + 1);
+    } else {
+      dvDate.setDate(dvDate.getDate() - 1);
+    }
+    renderDayView();
+  }, { passive: true });
+})();
+
 // ── Helpers ───────────────────────────────────────────────
 
 function timeStrToMin(t) {
@@ -2198,6 +2219,27 @@ document.getElementById('js-wv-today').addEventListener('click', () => {
 document.getElementById('js-wv-add').addEventListener('click', () => {
   openDayModal(wvDate.getFullYear(), wvDate.getMonth(), wvDate.getDate());
 });
+
+// ── Swipe navigation (week view) ──────────────────────────────────────────────
+(function() {
+  const el = document.getElementById('js-week-view');
+  let startX = 0, startY = 0;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) {
+      wvDate.setDate(wvDate.getDate() + 7);
+    } else {
+      wvDate.setDate(wvDate.getDate() - 7);
+    }
+    renderWeekView();
+  }, { passive: true });
+})();
 
 
 function _pad2(n){ return String(n).padStart(2,'0'); }
