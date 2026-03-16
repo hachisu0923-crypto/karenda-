@@ -172,6 +172,119 @@ function catCounts() {
   return c;
 }
 
+// ── Push Notification ─────────────────────────────────────────────────────────
+
+// 通知済みキーをlocalStorageで管理（当日分のみ保持）
+const NOTIF_STORAGE_KEY = 'notified_keys_v1';
+
+function _getNotifiedKeys() {
+  try {
+    const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    // 今日の日付キーのみ保持（昨日以前は自動削除）
+    const today = _todayStrLocal();
+    if (parsed._date !== today) return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+function _saveNotifiedKeys(keys) {
+  keys._date = _todayStrLocal();
+  localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(keys));
+}
+
+function _todayStrLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function _addDaysToStr(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function _diffDays(dateStr) {
+  const today = new Date(_todayStrLocal() + 'T00:00:00');
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.round((target - today) / 86400000);
+}
+
+async function _showNotif(title, body, tag) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, { body, tag, icon: '' });
+  } catch {
+    new Notification(title, { body, tag });
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+// ログイン後に呼ぶ：通知許可を求めてから当日分チェック
+async function initNotifications() {
+  if (!('Notification' in window)) return;
+  await requestNotificationPermission();
+  checkAndSendNotifications();
+
+  // 次の00:00に再チェックをスケジュール
+  const now = new Date();
+  const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1).getTime() - now.getTime();
+  setTimeout(() => {
+    checkAndSendNotifications();
+    // 以降は24時間ごと
+    setInterval(checkAndSendNotifications, 86400000);
+  }, msUntilMidnight);
+}
+
+function checkAndSendNotifications() {
+  if (Notification.permission !== 'granted') return;
+  const today = _todayStrLocal();
+  const notified = _getNotifiedKeys();
+
+  // ── タスク通知（4日前・2日前・当日）──
+  const taskDays = [4, 2, 0];
+  const allTasks = _taskState?.tasks ?? [];
+  allTasks.forEach(task => {
+    if (task.done || !task.dueDate) return;
+    const diff = _diffDays(task.dueDate);
+    if (!taskDays.includes(diff)) return;
+    const key = `task_${task.id}_${today}_d${diff}`;
+    if (notified[key]) return;
+    notified[key] = 1;
+    const label = diff === 0 ? '今日が期限' : `${diff}日後が期限`;
+    _showNotif('📋 タスクのお知らせ', `「${task.title}」の${label}です`, key);
+  });
+
+  // ── イベント通知（前日・当日）──
+  const eventDays = [1, 0];
+  Object.entries(events ?? {}).forEach(([dateKey, evList]) => {
+    if (!evList?.length) return;
+    const diff = _diffDays(dateKey);
+    if (!eventDays.includes(diff)) return;
+    evList.forEach(ev => {
+      if (!ev.title) return;
+      const key = `event_${ev._dbId ?? dateKey}_${today}_d${diff}`;
+      if (notified[key]) return;
+      notified[key] = 1;
+      const label = diff === 0 ? '今日' : '明日';
+      const timeStr = ev.timeStart ? ` (${ev.timeStart}〜)` : '';
+      _showNotif('📅 イベントのお知らせ', `${label}「${ev.title}」${timeStr}があります`, key);
+    });
+  });
+
+  _saveNotifiedKeys(notified);
+}
+
 // ── Wage helpers ──────────────────────────────────────────────────────────────
 
 function calcShift(ev) {
@@ -483,6 +596,9 @@ async function showApp(user) {
   const _cy = new Date().getFullYear();
   Promise.all([fetchHolidays(_cy), fetchHolidays(_cy + 1)]).then(() => renderAll());
   renderAll();
+
+  // 通知の初期化（許可取得 + 当日分チェック）
+  initNotifications();
 }
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
