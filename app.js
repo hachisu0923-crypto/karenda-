@@ -995,6 +995,22 @@ function buildCell(y,m,d,isOther,isToday) {
     }
   }
 
+  // Task progress bar for this day
+  {
+    const allDayTasks = (_taskState?.tasks || []).filter(t => t.dueDate === key);
+    if (allDayTasks.length > 0) {
+      const doneCount = allDayTasks.filter(t => t.done).length;
+      const pct = Math.round((doneCount / allDayTasks.length) * 100);
+      const bar = document.createElement('div');
+      bar.className = 'day-task-bar';
+      bar.title = `タスク達成: ${doneCount}/${allDayTasks.length}`;
+      bar.innerHTML =
+        `<div class="day-task-bar-track"><div class="day-task-bar-fill" style="width:${pct}%"></div></div>` +
+        `<span class="day-task-bar-label">${doneCount}/${allDayTasks.length}</span>`;
+      cell.appendChild(bar);
+    }
+  }
+
   cell.addEventListener('click',()=>{
     openDayModal(y,m,d);
   });
@@ -3448,4 +3464,80 @@ document.getElementById('js-receipt-retry').addEventListener('click', function()
 
 document.getElementById('js-receipt-error-retry').addEventListener('click', function() {
   _showReceiptStep('upload');
+});
+
+
+// ════════════════════════════════════════════════════════════
+//  DAILY PLAN MODAL (明日のタスク計画)
+// ════════════════════════════════════════════════════════════
+
+function _tomorrowStr() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${_pad2(d.getMonth()+1)}-${_pad2(d.getDate())}`;
+}
+
+function openDailyPlanModal() {
+  const tomorrow = _tomorrowStr();
+  const dateEl = document.getElementById('js-daily-plan-date');
+  dateEl.value = tomorrow;
+  _updateDailyPlanLabel();
+
+  document.getElementById('js-daily-plan-main').value = '';
+  document.getElementById('js-daily-plan-sub1').value = '';
+  document.getElementById('js-daily-plan-sub2').value = '';
+
+  openOverlay('js-daily-plan-overlay');
+  setTimeout(() => document.getElementById('js-daily-plan-main').focus(), 80);
+}
+
+function _updateDailyPlanLabel() {
+  const val = document.getElementById('js-daily-plan-date').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const label = document.getElementById('js-daily-plan-date-label');
+  label.textContent = `${d.getFullYear()}年 ${MONTHS_JA[d.getMonth()]} ${d.getDate()}日（${DAYS_JA[d.getDay()]}）`;
+}
+
+document.getElementById('js-daily-plan-date').addEventListener('change', _updateDailyPlanLabel);
+
+document.getElementById('js-daily-plan-btn').addEventListener('click', openDailyPlanModal);
+
+document.getElementById('js-daily-plan-close').addEventListener('click', () => closeOverlay('js-daily-plan-overlay'));
+document.getElementById('js-daily-plan-cancel').addEventListener('click', () => closeOverlay('js-daily-plan-overlay'));
+document.getElementById('js-daily-plan-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('js-daily-plan-overlay')) closeOverlay('js-daily-plan-overlay');
+});
+
+document.getElementById('js-daily-plan-save').addEventListener('click', async () => {
+  if (!_taskState) return;
+
+  const dueDate = document.getElementById('js-daily-plan-date').value;
+  const mainTitle = document.getElementById('js-daily-plan-main').value.trim();
+  const sub1Title = document.getElementById('js-daily-plan-sub1').value.trim();
+  const sub2Title = document.getElementById('js-daily-plan-sub2').value.trim();
+
+  if (!mainTitle) {
+    document.getElementById('js-daily-plan-main').focus();
+    return;
+  }
+
+  const newTasks = [];
+
+  // Main task (high priority)
+  newTasks.push({ priority: 'high', title: mainTitle });
+  if (sub1Title) newTasks.push({ priority: 'medium', title: sub1Title });
+  if (sub2Title) newTasks.push({ priority: 'medium', title: sub2Title });
+
+  for (const spec of newTasks) {
+    const id = `t_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const task = { id, title: spec.title, dueDate, priority: spec.priority, done: false, createdAt: Date.now() };
+    _taskState.tasks.unshift(task);
+    _persistTasks();
+    await addTaskToSupabase(task);
+  }
+
+  renderTaskPanel();
+  renderMain();
+  closeOverlay('js-daily-plan-overlay');
 });

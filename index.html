@@ -193,7 +193,10 @@
       <div id="js-bp-task" class="bp-section">
         <div class="bp-section-head">
           <span class="bp-section-title">タスク</span>
-          <span class="bp-progress" id="js-task-progress">0/0</span>
+          <div class="bp-section-head-right">
+            <button class="btn-daily-plan" id="js-daily-plan-btn" title="明日のタスクを計画">📋 明日の計画</button>
+            <span class="bp-progress" id="js-task-progress">0/0</span>
+          </div>
         </div>
         <div class="task-filter-bar">
           <button class="task-filter is-active" data-filter="all">すべて</button>
@@ -570,6 +573,44 @@
     <div class="modal-footer">
       <button class="btn-secondary" id="js-apikey-cancel">キャンセル</button>
       <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-apikey-save">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ DAILY PLAN MODAL ═══════════ -->
+<div class="overlay" id="js-daily-plan-overlay">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title">📋 明日のタスクを計画</div>
+        <div class="modal-header-sub" id="js-daily-plan-date-label"></div>
+      </div>
+      <button class="modal-close-btn" id="js-daily-plan-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label" for="js-daily-plan-date">対象日</label>
+        <input class="form-input" type="date" id="js-daily-plan-date" />
+      </div>
+      <div class="daily-plan-section">
+        <div class="daily-plan-section-label">
+          <span class="daily-plan-badge is-main">重要</span>
+          メインタスク（1つ）
+        </div>
+        <input class="form-input" type="text" id="js-daily-plan-main" placeholder="明日の最重要タスク…" maxlength="100" autocomplete="off" />
+      </div>
+      <div class="daily-plan-section">
+        <div class="daily-plan-section-label">
+          <span class="daily-plan-badge is-sub">サブ</span>
+          サブタスク（最大2つ）
+        </div>
+        <input class="form-input" type="text" id="js-daily-plan-sub1" placeholder="サブタスク 1（任意）" maxlength="100" autocomplete="off" style="margin-bottom:6px" />
+        <input class="form-input" type="text" id="js-daily-plan-sub2" placeholder="サブタスク 2（任意）" maxlength="100" autocomplete="off" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="js-daily-plan-cancel">キャンセル</button>
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-daily-plan-save">タスクを作成</button>
     </div>
   </div>
 </div>
