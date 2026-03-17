@@ -2304,8 +2304,36 @@ function initBottomPanelTabs() {
 // ════════════════════════════════════════════════════════════
 
 const TASK_STORAGE_KEY = 'tasks_v1';
+const GOAL_STORAGE_KEY = 'daily_goal_v1';
 
 let _taskState = null;
+
+// ── Daily Goal (今日の目標) helpers ──
+function _loadGoal(userId) {
+  try {
+    const root = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY) || '{}');
+    return root[userId] || {};
+  } catch(_) { return {}; }
+}
+function _saveGoal(userId, dateStr, text) {
+  try {
+    const raw = localStorage.getItem(GOAL_STORAGE_KEY) || '{}';
+    const root = JSON.parse(raw);
+    if (!root[userId]) root[userId] = {};
+    root[userId][dateStr] = text;
+    localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(root));
+  } catch(_) {}
+}
+function initTodayGoal(userId) {
+  const input = document.getElementById('js-today-goal-input');
+  if (!input) return;
+  const today = _todayStr();
+  const goals = _loadGoal(userId);
+  input.value = goals[today] || '';
+  input.addEventListener('input', () => {
+    _saveGoal(userId, today, input.value.trim());
+  });
+}
 
 function _readTaskRoot() {
   try { return JSON.parse(localStorage.getItem(TASK_STORAGE_KEY) || '{}'); }
@@ -2418,6 +2446,7 @@ async function initTaskPanel(user) {
 
   renderTaskPanel();
   renderMain(); // タスクの期限をカレンダーに反映
+  initTodayGoal(userId);
 
   // Add task
   formEl.addEventListener('submit', async (e) => {
