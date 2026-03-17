@@ -995,19 +995,23 @@ function buildCell(y,m,d,isOther,isToday) {
     }
   }
 
-  // Task progress bar for this day
+  // Daily plan progress bar for this day
   {
-    const allDayTasks = (_taskState?.tasks || []).filter(t => t.dueDate === key);
-    if (allDayTasks.length > 0) {
-      const doneCount = allDayTasks.filter(t => t.done).length;
-      const pct = Math.round((doneCount / allDayTasks.length) * 100);
-      const bar = document.createElement('div');
-      bar.className = 'day-task-bar';
-      bar.title = `タスク達成: ${doneCount}/${allDayTasks.length}`;
-      bar.innerHTML =
-        `<div class="day-task-bar-track"><div class="day-task-bar-fill" style="width:${pct}%"></div></div>` +
-        `<span class="day-task-bar-label">${doneCount}/${allDayTasks.length}</span>`;
-      cell.appendChild(bar);
+    const plan = getDailyPlan(key);
+    if (plan) {
+      const items = [plan.main, ...(plan.subs || [])].filter(Boolean);
+      const total = items.length;
+      if (total > 0) {
+        const doneCount = items.filter(i => i.done).length;
+        const pct = Math.round((doneCount / total) * 100);
+        const bar = document.createElement('div');
+        bar.className = 'day-task-bar';
+        bar.title = `計画達成: ${doneCount}/${total}`;
+        bar.innerHTML =
+          `<div class="day-task-bar-track"><div class="day-task-bar-fill${pct===100?' is-complete':''}" style="width:${pct}%"></div></div>` +
+          `<span class="day-task-bar-label">${doneCount}/${total}</span>`;
+        cell.appendChild(bar);
+      }
     }
   }
 
@@ -1036,6 +1040,7 @@ function openDayModal(y,m,d) {
   updateWagePreview();
 
   renderExistingEvents();
+  renderDailyPlanInModal(selectedKey);
   renderCatChips();
   renderTemplateChips();
   renderEventTemplateChips();
@@ -3468,8 +3473,108 @@ document.getElementById('js-receipt-error-retry').addEventListener('click', func
 
 
 // ════════════════════════════════════════════════════════════
-//  DAILY PLAN MODAL (明日のタスク計画)
+//  DAILY PLAN  ── タスクとは独立した翌日計画システム
 // ════════════════════════════════════════════════════════════
+
+const DAILY_PLAN_KEY = 'daily_plans_v1';
+
+function _loadAllDailyPlans() {
+  return loadLocalJSON(DAILY_PLAN_KEY) || {};
+}
+
+function _saveAllDailyPlans(plans) {
+  saveLocalJSON(DAILY_PLAN_KEY, plans);
+}
+
+// dateKey形式 'YYYY-MM-DD' で1日分の計画を取得
+// { main: { title, done }, subs: [{ title, done }, ...] } | null
+function getDailyPlan(dk) {
+  return _loadAllDailyPlans()[dk] || null;
+}
+
+function setDailyPlan(dk, plan) {
+  const all = _loadAllDailyPlans();
+  all[dk] = plan;
+  _saveAllDailyPlans(all);
+}
+
+function deleteDailyPlan(dk) {
+  const all = _loadAllDailyPlans();
+  delete all[dk];
+  _saveAllDailyPlans(all);
+}
+
+// ── 計画をデイモーダル内に表示・操作 ──
+
+function renderDailyPlanInModal(dk) {
+  const container = document.getElementById('js-day-modal-daily-plan');
+  if (!container) return;
+
+  const plan = getDailyPlan(dk);
+  if (!plan) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const items = [
+    { role: 'main', item: plan.main },
+    ...(plan.subs || []).map((s, i) => ({ role: 'sub', idx: i, item: s }))
+  ].filter(e => e.item && e.item.title);
+
+  if (items.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const doneCount = items.filter(e => e.item.done).length;
+  const pct = Math.round((doneCount / items.length) * 100);
+
+  container.innerHTML =
+    `<div class="dp-modal-header">` +
+      `<span class="dp-modal-title">📋 今日の計画</span>` +
+      `<span class="dp-modal-progress">${doneCount}/${items.length}</span>` +
+      `<button class="dp-modal-del" data-date="${dk}" title="計画を削除">🗑</button>` +
+    `</div>` +
+    `<div class="dp-modal-bar"><div class="dp-modal-bar-fill${pct===100?' is-complete':''}" style="width:${pct}%"></div></div>` +
+    items.map((e, i) =>
+      `<div class="dp-modal-item${e.item.done?' is-done':''}" data-dp-idx="${i}">` +
+        `<button class="dp-modal-check" aria-label="${e.item.done?'未完了に戻す':'完了にする'}">` +
+          (e.item.done ? '✓' : '') +
+        `</button>` +
+        `<span class="dp-modal-badge ${e.role==='main'?'is-main':'is-sub'}">${e.role==='main'?'重要':'サブ'}</span>` +
+        `<span class="dp-modal-item-title">${escHtml(e.item.title)}</span>` +
+      `</div>`
+    ).join('');
+
+  // Toggle done
+  container.querySelectorAll('.dp-modal-item').forEach((row, i) => {
+    row.querySelector('.dp-modal-check').addEventListener('click', e => {
+      e.stopPropagation();
+      const cur = getDailyPlan(dk);
+      if (!cur) return;
+      const spec = items[i];
+      if (spec.role === 'main') {
+        cur.main.done = !cur.main.done;
+      } else {
+        cur.subs[spec.idx].done = !cur.subs[spec.idx].done;
+      }
+      setDailyPlan(dk, cur);
+      renderDailyPlanInModal(dk);
+      renderMain();
+    });
+  });
+
+  // Delete plan
+  container.querySelector('.dp-modal-del')?.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!confirm('この日の計画を削除しますか？')) return;
+    deleteDailyPlan(dk);
+    renderDailyPlanInModal(dk);
+    renderMain();
+  });
+}
+
+// ── 計画作成モーダル ──
 
 function _tomorrowStr() {
   const d = new Date();
@@ -3495,24 +3600,20 @@ function _updateDailyPlanLabel() {
   const val = document.getElementById('js-daily-plan-date').value;
   if (!val) return;
   const d = new Date(val + 'T00:00:00');
-  const label = document.getElementById('js-daily-plan-date-label');
-  label.textContent = `${d.getFullYear()}年 ${MONTHS_JA[d.getMonth()]} ${d.getDate()}日（${DAYS_JA[d.getDay()]}）`;
+  document.getElementById('js-daily-plan-date-label').textContent =
+    `${d.getFullYear()}年 ${MONTHS_JA[d.getMonth()]} ${d.getDate()}日（${DAYS_JA[d.getDay()]}）`;
 }
 
 document.getElementById('js-daily-plan-date').addEventListener('change', _updateDailyPlanLabel);
-
 document.getElementById('js-daily-plan-btn').addEventListener('click', openDailyPlanModal);
-
 document.getElementById('js-daily-plan-close').addEventListener('click', () => closeOverlay('js-daily-plan-overlay'));
 document.getElementById('js-daily-plan-cancel').addEventListener('click', () => closeOverlay('js-daily-plan-overlay'));
 document.getElementById('js-daily-plan-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('js-daily-plan-overlay')) closeOverlay('js-daily-plan-overlay');
 });
 
-document.getElementById('js-daily-plan-save').addEventListener('click', async () => {
-  if (!_taskState) return;
-
-  const dueDate = document.getElementById('js-daily-plan-date').value;
+document.getElementById('js-daily-plan-save').addEventListener('click', () => {
+  const dk = document.getElementById('js-daily-plan-date').value;
   const mainTitle = document.getElementById('js-daily-plan-main').value.trim();
   const sub1Title = document.getElementById('js-daily-plan-sub1').value.trim();
   const sub2Title = document.getElementById('js-daily-plan-sub2').value.trim();
@@ -3522,22 +3623,14 @@ document.getElementById('js-daily-plan-save').addEventListener('click', async ()
     return;
   }
 
-  const newTasks = [];
+  const plan = {
+    main: { title: mainTitle, done: false },
+    subs: []
+  };
+  if (sub1Title) plan.subs.push({ title: sub1Title, done: false });
+  if (sub2Title) plan.subs.push({ title: sub2Title, done: false });
 
-  // Main task (high priority)
-  newTasks.push({ priority: 'high', title: mainTitle });
-  if (sub1Title) newTasks.push({ priority: 'medium', title: sub1Title });
-  if (sub2Title) newTasks.push({ priority: 'medium', title: sub2Title });
-
-  for (const spec of newTasks) {
-    const id = `t_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-    const task = { id, title: spec.title, dueDate, priority: spec.priority, done: false, createdAt: Date.now() };
-    _taskState.tasks.unshift(task);
-    _persistTasks();
-    await addTaskToSupabase(task);
-  }
-
-  renderTaskPanel();
+  setDailyPlan(dk, plan);
   renderMain();
   closeOverlay('js-daily-plan-overlay');
 });
