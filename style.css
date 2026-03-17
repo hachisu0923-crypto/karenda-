@@ -2317,36 +2317,73 @@ input  { font-family: inherit; }
   flex-shrink: 0;
 }
 .goal-today-btn:hover { background: var(--color-bg-hover); color: var(--color-text); }
-.goal-card {
-  background: var(--color-bg-hover);
-  border-radius: 10px;
-  border-left: 3px solid var(--color-accent, #4f8ef7);
-  padding: 10px 12px;
-  margin-bottom: 8px;
+.goal-list { margin-bottom: 8px; }
+.goal-empty {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 20px 0 12px;
 }
-.goal-textarea {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--color-text);
-  outline: none;
-  resize: none;
-  font-family: inherit;
-  line-height: 1.6;
-}
-.goal-textarea::placeholder { color: var(--color-text-secondary); }
-.goal-save-row {
+.goal-item {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--color-border);
 }
-.goal-saved-indicator {
-  font-size: 12px;
-  color: var(--color-accent, #4f8ef7);
+.goal-item:last-child { border-bottom: none; }
+.goal-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent, #4f8ef7);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.15s;
 }
+.goal-item.is-done .goal-check {
+  background: var(--color-accent, #4f8ef7);
+  border-color: var(--color-accent, #4f8ef7);
+}
+.goal-item.is-done .goal-check::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 6px;
+  height: 4px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+}
+.goal-item-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.goal-item.is-done .goal-item-text {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+.goal-del {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+.goal-item:hover .goal-del { opacity: 1; }
+.goal-del:hover { background: var(--color-bg-hover); color: var(--color-text); }
 
 /* ── Filter bar ── */
 .task-filter-bar {

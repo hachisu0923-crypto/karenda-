@@ -2310,18 +2310,18 @@ const GOAL_STORAGE_KEY = 'daily_goal_v1';
 let _taskState = null;
 
 // ── Goal Panel (目標) helpers ──
+// goals[userId][dateStr] = [{id, text, done}, ...]
+
 function _loadGoal(userId) {
   try {
     const root = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY) || '{}');
     return root[userId] || {};
   } catch(_) { return {}; }
 }
-function _saveGoal(userId, dateStr, text) {
+function _persistGoal(userId, goals) {
   try {
     const root = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY) || '{}');
-    if (!root[userId]) root[userId] = {};
-    if (text) root[userId][dateStr] = text;
-    else delete root[userId][dateStr];
+    root[userId] = goals;
     localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(root));
   } catch(_) {}
 }
@@ -2334,7 +2334,7 @@ function _dateAddDays(dateStr, days) {
 function _formatGoalDate(dateStr) {
   const today    = _todayStr();
   const tomorrow = _dateAddDays(today, 1);
-  const [y, m, d] = dateStr.split('-');
+  const [, m, d] = dateStr.split('-');
   const base = `${parseInt(m)}月${parseInt(d)}日`;
   if (dateStr === today)    return `今日 (${base})`;
   if (dateStr === tomorrow) return `明日 (${base})`;
@@ -2342,42 +2342,73 @@ function _formatGoalDate(dateStr) {
 }
 
 function initGoalPanel(userId) {
-  const textarea  = document.getElementById('js-goal-textarea');
-  const display   = document.getElementById('js-goal-date-display');
-  const savedEl   = document.getElementById('js-goal-saved');
-  const saveBtn   = document.getElementById('js-goal-save-btn');
-  const prevBtn   = document.getElementById('js-goal-prev');
-  const nextBtn   = document.getElementById('js-goal-next');
-  const todayBtn  = document.getElementById('js-goal-today');
-  if (!textarea || !display) return;
+  const listEl   = document.getElementById('js-goal-list');
+  const display  = document.getElementById('js-goal-date-display');
+  const formEl   = document.getElementById('js-goal-add-form');
+  const inputEl  = document.getElementById('js-goal-input');
+  const prevBtn  = document.getElementById('js-goal-prev');
+  const nextBtn  = document.getElementById('js-goal-next');
+  const todayBtn = document.getElementById('js-goal-today');
+  if (!listEl || !display) return;
 
-  // デフォルトは明日（前日に翌日の目標を入力できる）
+  // デフォルトは明日（前日に翌日の目標を設定できる）
   let currentDate = _dateAddDays(_todayStr(), 1);
   const goals = _loadGoal(userId);
 
-  function render() {
+  function getItems() {
+    return Array.isArray(goals[currentDate]) ? goals[currentDate] : [];
+  }
+
+  function renderGoalList() {
     display.textContent = _formatGoalDate(currentDate);
-    textarea.value = goals[currentDate] || '';
-    savedEl.textContent = '';
+    const items = getItems();
+    if (items.length === 0) {
+      listEl.innerHTML = '<div class="goal-empty">目標を追加してください</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(item => `
+      <div class="goal-item ${item.done ? 'is-done' : ''}" data-goal-id="${item.id}">
+        <button class="goal-check" type="button" aria-label="達成切替"></button>
+        <span class="goal-item-text">${escapeHtml(item.text)}</span>
+        <button class="goal-del" type="button" aria-label="削除">✕</button>
+      </div>`).join('');
   }
 
-  function save() {
-    const text = textarea.value.trim();
-    goals[currentDate] = text;
-    _saveGoal(userId, currentDate, text);
-    savedEl.textContent = '保存しました';
-    setTimeout(() => { savedEl.textContent = ''; }, 1500);
-  }
+  function save() { _persistGoal(userId, goals); }
 
-  prevBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate, -1); render(); });
-  nextBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate,  1); render(); });
-  todayBtn.addEventListener('click', () => { currentDate = _todayStr(); render(); });
-  saveBtn.addEventListener('click', save);
-  textarea.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); save(); }
+  // イベント: チェック・削除
+  listEl.addEventListener('click', e => {
+    const row = e.target.closest('[data-goal-id]');
+    if (!row) return;
+    const id = row.dataset.goalId;
+    const items = getItems();
+    if (e.target.closest('.goal-del')) {
+      goals[currentDate] = items.filter(i => i.id !== id);
+    } else if (e.target.closest('.goal-check') || e.target.closest('.goal-item-text')) {
+      const item = items.find(i => i.id === id);
+      if (item) item.done = !item.done;
+    }
+    save();
+    renderGoalList();
   });
 
-  render();
+  // イベント: 追加
+  formEl.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = (inputEl.value || '').trim();
+    if (!text) return;
+    if (!goals[currentDate]) goals[currentDate] = [];
+    goals[currentDate].push({ id: `g_${Date.now()}`, text, done: false });
+    inputEl.value = '';
+    save();
+    renderGoalList();
+  });
+
+  prevBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate, -1); renderGoalList(); });
+  nextBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate,  1); renderGoalList(); });
+  todayBtn.addEventListener('click', () => { currentDate = _todayStr(); renderGoalList(); });
+
+  renderGoalList();
 }
 
 function _readTaskRoot() {

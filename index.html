@@ -182,16 +182,31 @@
       </div>
     </div>
 
-    <!-- ── Bottom panel: Task / 家計簿 / 目標 ── -->
+    <!-- ── Bottom panel: 目標 / Task / 家計簿 ── -->
     <div class="bottom-panel">
       <div class="bp-tab-bar">
-        <button class="bp-tab is-active" data-bp="task">タスク</button>
+        <button class="bp-tab is-active" data-bp="goal">目標</button>
+        <button class="bp-tab" data-bp="task">タスク</button>
         <button class="bp-tab" data-bp="budget">家計簿</button>
-        <button class="bp-tab" data-bp="goal">目標</button>
+      </div>
+
+      <!-- ── Goal (目標) section ── -->
+      <div id="js-bp-goal" class="bp-section">
+        <div class="goal-date-nav">
+          <button class="goal-nav-btn" id="js-goal-prev">‹</button>
+          <div class="goal-date-display" id="js-goal-date-display"></div>
+          <button class="goal-nav-btn" id="js-goal-next">›</button>
+          <button class="goal-today-btn" id="js-goal-today">今日</button>
+        </div>
+        <div class="goal-list" id="js-goal-list"></div>
+        <form class="bp-add-form" id="js-goal-add-form" autocomplete="off">
+          <input class="bp-add-input" id="js-goal-input" type="text" placeholder="目標を追加…" maxlength="100" />
+          <button class="bp-add-btn" type="submit">追加</button>
+        </form>
       </div>
 
       <!-- ── Task section ── -->
-      <div id="js-bp-task" class="bp-section">
+      <div id="js-bp-task" class="bp-section" style="display:none">
         <div class="bp-section-head">
           <span class="bp-section-title">タスク</span>
           <div class="bp-section-head-right">
@@ -255,23 +270,6 @@
         <input type="file" id="js-receipt-file" accept="image/*" capture="environment" style="display:none" />
       </div>
 
-      <!-- ── Goal (目標) section ── -->
-      <div id="js-bp-goal" class="bp-section" style="display:none">
-        <div class="goal-date-nav">
-          <button class="goal-nav-btn" id="js-goal-prev">‹</button>
-          <div class="goal-date-display" id="js-goal-date-display"></div>
-          <button class="goal-nav-btn" id="js-goal-next">›</button>
-          <button class="goal-today-btn" id="js-goal-today">今日</button>
-        </div>
-        <div class="goal-card">
-          <textarea class="goal-textarea" id="js-goal-textarea"
-                    placeholder="この日の目標を入力…" maxlength="300" rows="4"></textarea>
-        </div>
-        <div class="goal-save-row">
-          <span class="goal-saved-indicator" id="js-goal-saved"></span>
-          <button class="bp-add-btn" id="js-goal-save-btn">保存</button>
-        </div>
-      </div>
     </div>
 
   </div>
