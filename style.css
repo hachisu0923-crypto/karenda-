@@ -3542,3 +3542,119 @@ input  { font-family: inherit; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+/* ============================================================
+   PLAN TAB — 計画カード一覧
+   ============================================================ */
+
+.plan-card {
+  background: var(--color-bg-hover);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--color-border);
+  transition: border-color 0.15s;
+}
+.plan-card.is-complete { border-left-color: #22c55e; }
+.plan-card.is-past     { border-left-color: #ef4444; opacity: 0.75; }
+
+.plan-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.plan-card-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+.plan-card-date.is-today { color: var(--color-accent); }
+
+.plan-card-score {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-card-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--color-text-disabled);
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+}
+.plan-card-del:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+.plan-card-bar-track {
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.plan-card-bar-fill {
+  height: 100%;
+  background: #22c55e;
+  border-radius: 2px;
+  transition: width 0.25s ease;
+  min-width: 2px;
+}
+.plan-card.is-complete .plan-card-bar-fill { background: #16a34a; }
+
+.plan-card-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-card-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: var(--color-bg-base);
+}
+.plan-card-item.is-done { opacity: 0.5; }
+.plan-card-item.is-done .plan-card-item-title { text-decoration: line-through; }
+
+.plan-card-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg-hover);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #16a34a;
+  flex-shrink: 0;
+  transition: border-color 0.12s, background 0.12s;
+}
+.plan-card-check:hover { border-color: #22c55e; background: rgba(34,197,94,0.1); }
+.plan-card-item.is-done .plan-card-check {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.plan-card-item-title {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

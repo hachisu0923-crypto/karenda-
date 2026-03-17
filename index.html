@@ -186,6 +186,7 @@
     <div class="bottom-panel">
       <div class="bp-tab-bar">
         <button class="bp-tab is-active" data-bp="task">タスク</button>
+        <button class="bp-tab" data-bp="plan">計画</button>
         <button class="bp-tab" data-bp="budget">家計簿</button>
       </div>
 
@@ -193,10 +194,7 @@
       <div id="js-bp-task" class="bp-section">
         <div class="bp-section-head">
           <span class="bp-section-title">タスク</span>
-          <div class="bp-section-head-right">
-            <button class="btn-daily-plan" id="js-daily-plan-btn" title="明日のタスクを計画">📋 明日の計画</button>
-            <span class="bp-progress" id="js-task-progress">0/0</span>
-          </div>
+          <span class="bp-progress" id="js-task-progress">0/0</span>
         </div>
         <div class="task-filter-bar">
           <button class="task-filter is-active" data-filter="all">すべて</button>
@@ -214,6 +212,15 @@
           </select>
           <button class="bp-add-btn" type="submit">追加</button>
         </form>
+      </div>
+
+      <!-- ── Daily Plan (計画) section ── -->
+      <div id="js-bp-plan" class="bp-section" style="display:none">
+        <div class="bp-section-head">
+          <span class="bp-section-title">日次計画</span>
+          <button class="btn-daily-plan" id="js-daily-plan-btn" title="翌日の計画を作成">＋ 計画を作成</button>
+        </div>
+        <div id="js-plan-list"></div>
       </div>
 
       <!-- ── Budget (家計簿) section ── -->

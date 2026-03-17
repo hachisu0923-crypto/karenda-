@@ -2311,9 +2311,11 @@ function initBottomPanelTabs() {
     btn.addEventListener('click', () => {
       const target = btn.dataset.bp;
       tabs.forEach(b => b.classList.toggle('is-active', b === btn));
-      document.getElementById('js-bp-task').style.display = target === 'task' ? '' : 'none';
+      document.getElementById('js-bp-task').style.display   = target === 'task'   ? '' : 'none';
+      document.getElementById('js-bp-plan').style.display   = target === 'plan'   ? '' : 'none';
       document.getElementById('js-bp-budget').style.display = target === 'budget' ? '' : 'none';
       if (target === 'budget') renderBudgetPanel();
+      if (target === 'plan')   renderDailyPlanTab();
     });
   });
 }
@@ -3574,6 +3576,96 @@ function renderDailyPlanInModal(dk) {
   });
 }
 
+// ── 計画タブ（一覧表示） ──
+
+function renderDailyPlanTab() {
+  const listEl = document.getElementById('js-plan-list');
+  if (!listEl) return;
+
+  const all = _loadAllDailyPlans();
+  const keys = Object.keys(all).sort(); // 日付昇順
+
+  if (keys.length === 0) {
+    listEl.innerHTML = '<div class="task-empty">まだ計画がありません。「＋ 計画を作成」から翌日の計画を立てましょう。</div>';
+    return;
+  }
+
+  const today = _todayStr();
+
+  listEl.innerHTML = keys.map(dk => {
+    const plan = all[dk];
+    const items = [plan.main, ...(plan.subs || [])].filter(Boolean);
+    const total = items.length;
+    const doneCount = items.filter(i => i.done).length;
+    const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+    const d = new Date(dk + 'T00:00:00');
+    const isPast = dk < today;
+    const isToday = dk === today;
+    const dateLabel = isToday
+      ? '今日'
+      : `${d.getMonth()+1}月${d.getDate()}日（${DAYS_JA[d.getDay()]}）`;
+
+    const statusClass = pct === 100 ? 'is-complete' : isPast && pct < 100 ? 'is-past' : '';
+
+    return `<div class="plan-card ${statusClass}" data-plan-key="${dk}">
+      <div class="plan-card-head">
+        <span class="plan-card-date ${isToday?'is-today':''}">${dateLabel}</span>
+        <span class="plan-card-score">${doneCount}/${total}</span>
+        <button class="plan-card-del" data-dk="${dk}" title="削除">✕</button>
+      </div>
+      <div class="plan-card-bar-track"><div class="plan-card-bar-fill" style="width:${pct}%"></div></div>
+      <div class="plan-card-items">
+        ${[{ role:'main', item: plan.main }, ...(plan.subs||[]).map((s,i)=>({ role:'sub', idx:i, item:s }))].filter(e=>e.item?.title).map((e, i) =>
+          `<div class="plan-card-item${e.item.done?' is-done':''}" data-dk="${dk}" data-item-idx="${i}">
+            <button class="plan-card-check" title="${e.item.done?'未完了に戻す':'完了にする'}">${e.item.done?'✓':''}</button>
+            <span class="dp-modal-badge ${e.role==='main'?'is-main':'is-sub'}">${e.role==='main'?'重要':'サブ'}</span>
+            <span class="plan-card-item-title">${escHtml(e.item.title)}</span>
+          </div>`
+        ).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Toggle done on plan card
+  listEl.querySelectorAll('.plan-card-check').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const row = btn.closest('.plan-card-item');
+      const dk = row.dataset.dk;
+      const idx = parseInt(row.dataset.itemIdx);
+      const plan = getDailyPlan(dk);
+      if (!plan) return;
+
+      const allItems = [plan.main, ...(plan.subs||[])].filter(Boolean);
+      const target = allItems[idx];
+      if (!target) return;
+
+      // Figure out if this is main or sub
+      if (idx === 0) {
+        plan.main.done = !plan.main.done;
+      } else {
+        plan.subs[idx - 1].done = !plan.subs[idx - 1].done;
+      }
+      setDailyPlan(dk, plan);
+      renderDailyPlanTab();
+      renderMain();
+    });
+  });
+
+  // Delete plan card
+  listEl.querySelectorAll('.plan-card-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const dk = btn.dataset.dk;
+      if (!confirm('この計画を削除しますか？')) return;
+      deleteDailyPlan(dk);
+      renderDailyPlanTab();
+      renderMain();
+    });
+  });
+}
+
 // ── 計画作成モーダル ──
 
 function _tomorrowStr() {
@@ -3632,5 +3724,6 @@ document.getElementById('js-daily-plan-save').addEventListener('click', () => {
 
   setDailyPlan(dk, plan);
   renderMain();
+  renderDailyPlanTab();
   closeOverlay('js-daily-plan-overlay');
 });
