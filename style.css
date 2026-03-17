@@ -2277,35 +2277,75 @@ input  { font-family: inherit; }
    TASK section
    ============================================================ */
 
-/* ── Today's Goal (今日の目標) ── */
-.today-goal-section {
+/* ── Goal Panel (目標タブ) ── */
+.goal-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 12px;
-  padding: 10px 12px;
+}
+.goal-nav-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.goal-nav-btn:hover { background: var(--color-bg-hover); color: var(--color-text); }
+.goal-date-display {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+}
+.goal-today-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+.goal-today-btn:hover { background: var(--color-bg-hover); color: var(--color-text); }
+.goal-card {
   background: var(--color-bg-hover);
   border-radius: 10px;
   border-left: 3px solid var(--color-accent, #4f8ef7);
+  padding: 10px 12px;
+  margin-bottom: 8px;
 }
-.today-goal-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--color-accent, #4f8ef7);
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.today-goal-input {
+.goal-textarea {
   width: 100%;
   border: none;
   background: transparent;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--color-text);
   outline: none;
-  padding: 0;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.6;
 }
-.today-goal-input::placeholder {
-  color: var(--color-text-secondary);
-  font-weight: 400;
+.goal-textarea::placeholder { color: var(--color-text-secondary); }
+.goal-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.goal-saved-indicator {
+  font-size: 12px;
+  color: var(--color-accent, #4f8ef7);
 }
 
 /* ── Filter bar ── */
