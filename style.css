@@ -2277,6 +2277,37 @@ input  { font-family: inherit; }
    TASK section
    ============================================================ */
 
+/* ── Today's Goal (今日の目標) ── */
+.today-goal-section {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--color-bg-hover);
+  border-radius: 10px;
+  border-left: 3px solid var(--color-accent, #4f8ef7);
+}
+.today-goal-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-accent, #4f8ef7);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.today-goal-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  outline: none;
+  padding: 0;
+}
+.today-goal-input::placeholder {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
 /* ── Filter bar ── */
 .task-filter-bar {
   display: flex;
