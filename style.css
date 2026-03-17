@@ -2385,6 +2385,46 @@ input  { font-family: inherit; }
 .goal-item:hover .goal-del { opacity: 1; }
 .goal-del:hover { background: var(--color-bg-hover); color: var(--color-text); }
 
+/* ── Goal badges ── */
+.goal-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
+}
+.goal-badge.is-main {
+  background: var(--color-accent);
+  color: #fff;
+}
+.goal-badge.is-sub {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+.goal-badge.is-extra {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+/* placeholder text for empty fixed slots */
+.goal-item-text.is-placeholder {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+/* inline edit input */
+.goal-inline-input {
+  flex: 1;
+  border: none;
+  border-bottom: 1.5px solid var(--color-accent);
+  background: transparent;
+  font-size: 14px;
+  color: var(--color-text);
+  outline: none;
+  padding: 0 2px;
+  font-family: inherit;
+}
+
 /* ── Filter bar ── */
 .task-filter-bar {
   display: flex;

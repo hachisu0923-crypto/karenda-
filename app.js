@@ -2353,63 +2353,120 @@ function initGoalPanel(userId) {
 
   // デフォルトは明日（前日に翌日の目標を設定できる）
   let currentDate = _dateAddDays(_todayStr(), 1);
-  const goals = _loadGoal(userId);
+  const allGoals = _loadGoal(userId);
 
-  function getItems() {
-    return Array.isArray(goals[currentDate]) ? goals[currentDate] : [];
+  // データ構造: { main:{text,done}, subs:[{id,text,done,required}] }
+  // 旧形式（配列）からの移行も吸収する
+  function getData() {
+    const raw = allGoals[currentDate];
+    if (!raw || Array.isArray(raw)) {
+      allGoals[currentDate] = {
+        main: { text: '', done: false },
+        subs: [
+          { id: 'sub-0', text: '', done: false, required: true },
+          { id: 'sub-1', text: '', done: false, required: true },
+        ]
+      };
+    }
+    const data = allGoals[currentDate];
+    if (!data.subs) data.subs = [];
+    // required サブが2つ未満なら補完
+    const reqCount = data.subs.filter(s => s.required).length;
+    for (let i = reqCount; i < 2; i++) {
+      data.subs.splice(i, 0, { id: `sub-${i}`, text: '', done: false, required: true });
+    }
+    return data;
+  }
+
+  function save() { _persistGoal(userId, allGoals); }
+
+  const SVG_CHECK = '<svg viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function goalItemHtml(id, type, done, text, placeholder, deletable) {
+    return `
+      <div class="goal-item goal-item-${type} ${done ? 'is-done' : ''}" data-goal-id="${id}" data-goal-type="${type}">
+        <button class="goal-check" type="button" aria-label="達成切替">${done ? SVG_CHECK : ''}</button>
+        <span class="goal-badge is-${type}">${type === 'main' ? '最重要' : type === 'sub' ? 'サブ' : '+α'}</span>
+        <span class="goal-item-text ${!text ? 'is-placeholder' : ''}">${text ? escapeHtml(text) : placeholder}</span>
+        ${deletable ? '<button class="goal-del" type="button" aria-label="削除">✕</button>' : ''}
+      </div>`;
   }
 
   function renderGoalList() {
     display.textContent = _formatGoalDate(currentDate);
-    const items = getItems();
-    if (items.length === 0) {
-      listEl.innerHTML = '<div class="goal-empty">目標を追加してください</div>';
-      return;
-    }
-    listEl.innerHTML = items.map(item => `
-      <div class="goal-item ${item.done ? 'is-done' : ''}" data-goal-id="${item.id}">
-        <button class="goal-check" type="button" aria-label="達成切替">
-          ${item.done
-            ? '<svg viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-            : ''}
-        </button>
-        <span class="goal-item-text">${escapeHtml(item.text)}</span>
-        <button class="goal-del" type="button" aria-label="削除">✕</button>
-      </div>`).join('');
+    const { main, subs } = getData();
+    const reqSubs   = subs.filter(s => s.required);
+    const extraSubs = subs.filter(s => !s.required);
+
+    listEl.innerHTML =
+      goalItemHtml('main', 'main', main.done, main.text, '最重要の目標…', false) +
+      reqSubs.map((s, i) => goalItemHtml(s.id, 'sub', s.done, s.text, `サブ目標 ${i + 1}…`, false)).join('') +
+      extraSubs.map(s    => goalItemHtml(s.id, 'extra', s.done, s.text, '追加目標…', true)).join('');
   }
 
-  function save() { _persistGoal(userId, goals); }
-
-  // イベント: チェック・削除
+  // イベント委譲
   listEl.addEventListener('click', e => {
     const row = e.target.closest('[data-goal-id]');
     if (!row) return;
-    const id = row.dataset.goalId;
-    const items = getItems();
+    const id   = row.dataset.goalId;
+    const type = row.dataset.goalType;
+    const data = getData();
+
+    // 削除（+α のみ）
     if (e.target.closest('.goal-del')) {
-      goals[currentDate] = items.filter(i => i.id !== id);
-    } else if (e.target.closest('.goal-check') || e.target.closest('.goal-item-text')) {
-      const item = items.find(i => i.id === id);
-      if (item) item.done = !item.done;
+      data.subs = data.subs.filter(s => s.id !== id);
+      save(); renderGoalList(); return;
     }
-    save();
-    renderGoalList();
+
+    // チェック切替
+    if (e.target.closest('.goal-check')) {
+      if (type === 'main') {
+        data.main.done = !data.main.done;
+      } else {
+        const item = data.subs.find(s => s.id === id);
+        if (item) item.done = !item.done;
+      }
+      save(); renderGoalList(); return;
+    }
+
+    // テキストをクリックしてインライン編集
+    if (e.target.closest('.goal-item-text')) {
+      const textEl = e.target.closest('.goal-item-text');
+      const current = type === 'main' ? data.main.text : (data.subs.find(s => s.id === id)?.text || '');
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'goal-inline-input';
+      inp.value = current;
+      inp.maxLength = 100;
+      textEl.replaceWith(inp);
+      inp.focus(); inp.select();
+      const commit = () => {
+        const val = inp.value.trim();
+        if (type === 'main') { data.main.text = val; }
+        else { const item = data.subs.find(s => s.id === id); if (item) item.text = val; }
+        save(); renderGoalList();
+      };
+      inp.addEventListener('blur', commit);
+      inp.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter')  { ev.preventDefault(); inp.blur(); }
+        if (ev.key === 'Escape') { renderGoalList(); }
+      });
+    }
   });
 
-  // イベント: 追加
+  // +α 目標を追加
   formEl.addEventListener('submit', e => {
     e.preventDefault();
     const text = (inputEl.value || '').trim();
     if (!text) return;
-    if (!goals[currentDate]) goals[currentDate] = [];
-    goals[currentDate].push({ id: `g_${Date.now()}`, text, done: false });
+    const data = getData();
+    data.subs.push({ id: `g_${Date.now()}`, text, done: false, required: false });
     inputEl.value = '';
-    save();
-    renderGoalList();
+    save(); renderGoalList();
   });
 
-  prevBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate, -1); renderGoalList(); });
-  nextBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate,  1); renderGoalList(); });
+  prevBtn.addEventListener('click',  () => { currentDate = _dateAddDays(currentDate, -1); renderGoalList(); });
+  nextBtn.addEventListener('click',  () => { currentDate = _dateAddDays(currentDate,  1); renderGoalList(); });
   todayBtn.addEventListener('click', () => { currentDate = _todayStr(); renderGoalList(); });
 
   renderGoalList();
