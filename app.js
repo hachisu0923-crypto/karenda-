@@ -2291,8 +2291,9 @@ function initBottomPanelTabs() {
     btn.addEventListener('click', () => {
       const target = btn.dataset.bp;
       tabs.forEach(b => b.classList.toggle('is-active', b === btn));
-      document.getElementById('js-bp-task').style.display = target === 'task' ? '' : 'none';
+      document.getElementById('js-bp-task').style.display   = target === 'task'   ? '' : 'none';
       document.getElementById('js-bp-budget').style.display = target === 'budget' ? '' : 'none';
+      document.getElementById('js-bp-goal').style.display   = target === 'goal'   ? '' : 'none';
       if (target === 'budget') renderBudgetPanel();
     });
   });
@@ -2308,7 +2309,7 @@ const GOAL_STORAGE_KEY = 'daily_goal_v1';
 
 let _taskState = null;
 
-// ── Daily Goal (今日の目標) helpers ──
+// ── Goal Panel (目標) helpers ──
 function _loadGoal(userId) {
   try {
     const root = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY) || '{}');
@@ -2317,22 +2318,66 @@ function _loadGoal(userId) {
 }
 function _saveGoal(userId, dateStr, text) {
   try {
-    const raw = localStorage.getItem(GOAL_STORAGE_KEY) || '{}';
-    const root = JSON.parse(raw);
+    const root = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY) || '{}');
     if (!root[userId]) root[userId] = {};
-    root[userId][dateStr] = text;
+    if (text) root[userId][dateStr] = text;
+    else delete root[userId][dateStr];
     localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(root));
   } catch(_) {}
 }
-function initTodayGoal(userId) {
-  const input = document.getElementById('js-today-goal-input');
-  if (!input) return;
-  const today = _todayStr();
+
+function _dateAddDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function _formatGoalDate(dateStr) {
+  const today    = _todayStr();
+  const tomorrow = _dateAddDays(today, 1);
+  const [y, m, d] = dateStr.split('-');
+  const base = `${parseInt(m)}月${parseInt(d)}日`;
+  if (dateStr === today)    return `今日 (${base})`;
+  if (dateStr === tomorrow) return `明日 (${base})`;
+  return base;
+}
+
+function initGoalPanel(userId) {
+  const textarea  = document.getElementById('js-goal-textarea');
+  const display   = document.getElementById('js-goal-date-display');
+  const savedEl   = document.getElementById('js-goal-saved');
+  const saveBtn   = document.getElementById('js-goal-save-btn');
+  const prevBtn   = document.getElementById('js-goal-prev');
+  const nextBtn   = document.getElementById('js-goal-next');
+  const todayBtn  = document.getElementById('js-goal-today');
+  if (!textarea || !display) return;
+
+  // デフォルトは明日（前日に翌日の目標を入力できる）
+  let currentDate = _dateAddDays(_todayStr(), 1);
   const goals = _loadGoal(userId);
-  input.value = goals[today] || '';
-  input.addEventListener('input', () => {
-    _saveGoal(userId, today, input.value.trim());
+
+  function render() {
+    display.textContent = _formatGoalDate(currentDate);
+    textarea.value = goals[currentDate] || '';
+    savedEl.textContent = '';
+  }
+
+  function save() {
+    const text = textarea.value.trim();
+    goals[currentDate] = text;
+    _saveGoal(userId, currentDate, text);
+    savedEl.textContent = '保存しました';
+    setTimeout(() => { savedEl.textContent = ''; }, 1500);
+  }
+
+  prevBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate, -1); render(); });
+  nextBtn.addEventListener('click', () => { currentDate = _dateAddDays(currentDate,  1); render(); });
+  todayBtn.addEventListener('click', () => { currentDate = _todayStr(); render(); });
+  saveBtn.addEventListener('click', save);
+  textarea.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); save(); }
   });
+
+  render();
 }
 
 function _readTaskRoot() {
@@ -2446,7 +2491,7 @@ async function initTaskPanel(user) {
 
   renderTaskPanel();
   renderMain(); // タスクの期限をカレンダーに反映
-  initTodayGoal(userId);
+  initGoalPanel(userId);
 
   // Add task
   formEl.addEventListener('submit', async (e) => {
