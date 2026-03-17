@@ -995,21 +995,6 @@ function buildCell(y,m,d,isOther,isToday) {
     }
   }
 
-  // Task progress bar for this day
-  {
-    const allDayTasks = (_taskState?.tasks || []).filter(t => t.dueDate === key);
-    if (allDayTasks.length > 0) {
-      const doneCount = allDayTasks.filter(t => t.done).length;
-      const pct = Math.round((doneCount / allDayTasks.length) * 100);
-      const bar = document.createElement('div');
-      bar.className = 'day-task-bar';
-      bar.title = `タスク達成: ${doneCount}/${allDayTasks.length}`;
-      bar.innerHTML =
-        `<div class="day-task-bar-track"><div class="day-task-bar-fill" style="width:${pct}%"></div></div>` +
-        `<span class="day-task-bar-label">${doneCount}/${allDayTasks.length}</span>`;
-      cell.appendChild(bar);
-    }
-  }
 
   cell.addEventListener('click',()=>{
     openDayModal(y,m,d);
