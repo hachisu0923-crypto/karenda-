@@ -2368,7 +2368,11 @@ function initGoalPanel(userId) {
     }
     listEl.innerHTML = items.map(item => `
       <div class="goal-item ${item.done ? 'is-done' : ''}" data-goal-id="${item.id}">
-        <button class="goal-check" type="button" aria-label="達成切替"></button>
+        <button class="goal-check" type="button" aria-label="達成切替">
+          ${item.done
+            ? '<svg viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            : ''}
+        </button>
         <span class="goal-item-text">${escapeHtml(item.text)}</span>
         <button class="goal-del" type="button" aria-label="削除">✕</button>
       </div>`).join('');

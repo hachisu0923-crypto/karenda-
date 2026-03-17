@@ -2333,30 +2333,30 @@ input  { font-family: inherit; }
 }
 .goal-item:last-child { border-bottom: none; }
 .goal-check {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  border: 2px solid var(--color-accent, #4f8ef7);
+  border: 2px solid var(--color-accent);
   background: none;
   cursor: pointer;
   flex-shrink: 0;
-  position: relative;
-  transition: background 0.15s;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.goal-check svg {
+  width: 10px;
+  height: 8px;
+  display: none;
 }
 .goal-item.is-done .goal-check {
-  background: var(--color-accent, #4f8ef7);
-  border-color: var(--color-accent, #4f8ef7);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
 }
-.goal-item.is-done .goal-check::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 6px;
-  height: 4px;
-  border-left: 2px solid #fff;
-  border-bottom: 2px solid #fff;
-  transform: rotate(-45deg) translateY(-1px);
+.goal-item.is-done .goal-check svg {
+  display: block;
 }
 .goal-item-text {
   flex: 1;
