@@ -1817,7 +1817,7 @@ function switchView(view) {
   document.getElementById('js-month-view').style.display = view === 'month' ? '' : 'none';
   document.getElementById('js-week-view').style.display  = view === 'week'  ? '' : 'none';
   document.getElementById('js-day-view').style.display   = view === 'day'   ? '' : 'none';
-  document.querySelectorAll('.view-tab, .workspace-tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
+  document.querySelectorAll('.workspace-tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
   updateStatusBar();
   if (view === 'day') {
     dvDate = new Date(curDate);
