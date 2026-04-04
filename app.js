@@ -68,6 +68,8 @@ function ensureDb(){
 
 const MONTHS_EN = ['January','February','March','April','May','June',
                    'July','August','September','October','November','December'];
+const MONTHS_INIT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS_JA = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const DAYS_JA   = ['日','月','火','水','木','金','土'];
 
@@ -839,7 +841,7 @@ function renderSidebar() {
 
 function renderMini() {
   const y=curDate.getFullYear(), m=curDate.getMonth(), today=new Date();
-  document.getElementById('js-mini-month').textContent = `${y}年${m+1}月`;
+  document.getElementById('js-mini-month').textContent = `${MONTHS_INIT[m]} ${y}`;
   const grid=document.getElementById('js-mini-grid');
   grid.innerHTML='';
   const first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), prev=new Date(y,m,0).getDate();
@@ -1629,22 +1631,31 @@ document.getElementById('js-next-month').addEventListener('click',()=>{curDate.s
 // ── Swipe navigation (month view) ──────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-month-view');
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    tracking = true;
+    swiped = false;
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      curDate.setMonth(curDate.getMonth() + 1);
-    } else {
-      curDate.setMonth(curDate.getMonth() - 1);
+  el.addEventListener('touchmove', e => {
+    if (!tracking || swiped) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    // 横方向が十分で、縦方向より大きいとき
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      tracking = false;
+      e.preventDefault();
+      if (dx < 0) {
+        curDate.setMonth(curDate.getMonth() + 1);
+      } else {
+        curDate.setMonth(curDate.getMonth() - 1);
+      }
+      renderAll();
     }
-    renderAll();
-  }, { passive: true });
+  }, { passive: false });
+  el.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 document.getElementById('js-today').addEventListener('click',()=>{curDate=new Date();renderAll();});
@@ -1771,7 +1782,7 @@ function updateStatusBar() {
   elView.textContent = VIEW_LABELS[currentView] || currentView;
 
   const y = curDate.getFullYear(), m = curDate.getMonth();
-  const monthStr = `${y}年${m+1}月`;
+  const monthStr = `${MONTHS_INIT[m]} ${y}`;
   elDate.textContent = monthStr;
 
   // Count events in current month
@@ -1874,22 +1885,30 @@ document.getElementById('js-dv-add').addEventListener('click', () => {
 // ── Swipe navigation (day view) ───────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-day-view');
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    tracking = true;
+    swiped = false;
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      dvDate.setDate(dvDate.getDate() + 1);
-    } else {
-      dvDate.setDate(dvDate.getDate() - 1);
+  el.addEventListener('touchmove', e => {
+    if (!tracking || swiped) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      tracking = false;
+      e.preventDefault();
+      if (dx < 0) {
+        dvDate.setDate(dvDate.getDate() + 1);
+      } else {
+        dvDate.setDate(dvDate.getDate() - 1);
+      }
+      renderDayView();
     }
-    renderDayView();
-  }, { passive: true });
+  }, { passive: false });
+  el.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 // ── Helpers ───────────────────────────────────────────────
@@ -1925,7 +1944,7 @@ function renderDayView() {
   const _dvHoliday = getHolidayName(key);
   dateEl.innerHTML = `
     <span class="dv-date-num ${isToday ? 'is-today' : ''} ${dow===0?'is-sun':dow===6?'is-sat':''}">${d}</span>
-    <span class="dv-date-label">${y}年 ${m+1}月 &nbsp;${DAYS[dow]}曜日</span>
+    <span class="dv-date-label">${MONTHS_INIT[m]} ${y} &nbsp;${DAYS_EN[dow]}</span>
     ${_dvHoliday ? `<span class="dv-holiday-badge">${escHtml(_dvHoliday)}</span>` : ''}`;
 
   // Time column
@@ -2108,9 +2127,9 @@ function renderWeekView() {
   const wEnd = new Date(weekStart); wEnd.setDate(wEnd.getDate() + 6);
   const rangeEl = document.getElementById('js-wv-range');
   if (weekStart.getMonth() === wEnd.getMonth()) {
-    rangeEl.textContent = `${weekStart.getFullYear()}年 ${weekStart.getMonth()+1}月 ${weekStart.getDate()}日 〜 ${wEnd.getDate()}日`;
+    rangeEl.textContent = `${MONTHS_INIT[weekStart.getMonth()]} ${weekStart.getDate()} – ${wEnd.getDate()}, ${weekStart.getFullYear()}`;
   } else {
-    rangeEl.textContent = `${weekStart.getFullYear()}年 ${weekStart.getMonth()+1}月 ${weekStart.getDate()}日 〜 ${wEnd.getFullYear()}年 ${wEnd.getMonth()+1}月 ${wEnd.getDate()}日`;
+    rangeEl.textContent = `${MONTHS_INIT[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS_INIT[wEnd.getMonth()]} ${wEnd.getDate()}, ${wEnd.getFullYear()}`;
   }
 
   // Build 7 date objects (Sun–Sat)
@@ -2294,22 +2313,30 @@ document.getElementById('js-wv-add').addEventListener('click', () => {
 // ── Swipe navigation (week view) ──────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-week-view');
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    tracking = true;
+    swiped = false;
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      wvDate.setDate(wvDate.getDate() + 7);
-    } else {
-      wvDate.setDate(wvDate.getDate() - 7);
+  el.addEventListener('touchmove', e => {
+    if (!tracking || swiped) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      tracking = false;
+      e.preventDefault();
+      if (dx < 0) {
+        wvDate.setDate(wvDate.getDate() + 7);
+      } else {
+        wvDate.setDate(wvDate.getDate() - 7);
+      }
+      renderWeekView();
     }
-    renderWeekView();
-  }, { passive: true });
+  }, { passive: false });
+  el.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 
@@ -3217,7 +3244,7 @@ function renderBudgetPanel() {
   var y = +parts0[0], m = +parts0[1]; // 1-based
 
   var monthLabel = document.getElementById('js-budget-month-label');
-  if (monthLabel) monthLabel.textContent = y + '\u5E74' + m + '\u6708';
+  if (monthLabel) monthLabel.textContent = MONTHS_INIT[m - 1] + ' ' + y;
 
   // ── Collect shift earnings from the PREVIOUS month ──
   var shift = _collectPrevMonthShifts(y, m);
