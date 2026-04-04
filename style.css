@@ -61,30 +61,31 @@
   /* — Theme icon — */
   --icon-theme: "☀️";
 
-  /* — Blender border-radius (flat UI, minimal rounding) — */
-  --radius-sm:  2px;
-  --radius-md:  3px;
-  --radius-lg:  4px;
+  /* — Blender 5.x border-radius (pill-based UI) — */
+  --radius-sm:  3px;
+  --radius-md:  5px;
+  --radius-lg:  8px;
+  --radius-pill: 20px;   /* Blender 5.0+ pill tabs */
 
   /* — Blender Panel System — */
-  --color-bg-menubar:       #1f1f1f;   /* top menu bar (darkest) */
-  --color-bg-panel-header:  #2d2d2d;   /* editor header background */
-  --color-bg-status:        #1a1a1a;   /* status bar background */
-  --color-separator:        #141414;   /* panel dividers (near-black) */
-  --color-grip:             #5a5a5a;   /* grip dots color */
-  --color-wire:             #444444;   /* calendar grid lines */
+  --color-bg-menubar:       #1f1f1f;
+  --color-bg-panel-header:  #2d2d2d;
+  --color-bg-status:        #1a1a1a;
+  --color-separator:        #141414;
+  --color-grip:             #5a5a5a;
+  --color-wire:             #3c3c3c;
 
-  /* — Workspace Tabs — */
-  --color-bg-workspace-tab:        #262626;  /* inactive tab */
-  --color-bg-workspace-tab-active: #282828;  /* active tab matches viewport */
-  --color-workspace-tab-border:    #4772b3;  /* active underline */
+  /* — Workspace Tabs (5.0 pill style) — */
+  --color-bg-workspace-tab:        transparent;
+  --color-bg-workspace-tab-hover:  rgba(255,255,255,0.06);
+  --color-bg-workspace-tab-active: #404040;
+  --color-workspace-tab-border:    transparent;
 
-  /* — Emboss Buttons — */
-  --btn-grad-top:    #424242;
-  --btn-grad-bot:    #2e2e2e;
-  --btn-emboss:      inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25);
-  --btn-primary-top: #5a84cc;
-  --btn-primary-bot: #4772b3;
+  /* — Flat Buttons (5.x — no emboss) — */
+  --color-btn:        #393939;
+  --color-btn-hover:  #474747;
+  --color-btn-active: #2c2c2c;
+  --color-btn-border: rgba(0,0,0,0.25);
 
   /* — Panel header height — */
   --panel-header-h:  26px;
@@ -153,14 +154,14 @@
   --color-separator:        #aaaaaa;
   --color-grip:             #909090;
   --color-wire:             #cccccc;
-  --color-bg-workspace-tab:        #c4c4c4;
-  --color-bg-workspace-tab-active: #f0f0f0;
-  --color-workspace-tab-border:    #4772b3;
-  --btn-grad-top:    #e0e0e0;
-  --btn-grad-bot:    #c8c8c8;
-  --btn-emboss:      inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.1);
-  --btn-primary-top: #5a84cc;
-  --btn-primary-bot: #4772b3;
+  --color-bg-workspace-tab:        transparent;
+  --color-bg-workspace-tab-hover:  rgba(0,0,0,0.06);
+  --color-bg-workspace-tab-active: #ffffff;
+  --color-workspace-tab-border:    transparent;
+  --color-btn:        #d8d8d8;
+  --color-btn-hover:  #e4e4e4;
+  --color-btn-active: #c4c4c4;
+  --color-btn-border: rgba(0,0,0,0.12);
 }
 
 /* ============================================================
@@ -206,7 +207,7 @@ input  { font-family: inherit; }
 .blender-menubar {
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 32px;
   background: var(--color-bg-menubar);
   border-bottom: 1px solid var(--color-separator);
   flex-shrink: 0;
@@ -260,45 +261,33 @@ input  { font-family: inherit; }
   padding: 2px 0;
 }
 
+/* Blender 5.0+ pill-shaped workspace tabs */
 .workspace-tab {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 14px;
-  height: 100%;
+  padding: 2px 14px;
   background: var(--color-bg-workspace-tab);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-bottom: none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border: none;
+  border-radius: var(--radius-pill);
   color: var(--color-text-secondary);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  transition: color 0.1s, background-color 0.1s;
+  transition: color 0.15s, background-color 0.15s;
   cursor: pointer;
 }
 
 .workspace-tab:hover {
   color: var(--color-text-primary);
-  background: #303030;
+  background: var(--color-bg-workspace-tab-hover);
 }
 
 .workspace-tab.is-active {
   background: var(--color-bg-workspace-tab-active);
   color: var(--color-text-primary);
-  border-color: rgba(255,255,255,0.08);
-  border-bottom-color: var(--color-bg-workspace-tab-active);
   font-weight: 600;
-  position: relative;
-}
-.workspace-tab.is-active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0; right: 0;
-  height: 2px;
-  background: var(--color-workspace-tab-border);
 }
 
 .workspace-tab-icon {
@@ -327,9 +316,9 @@ input  { font-family: inherit; }
   display: flex;
   align-items: center;
   height: var(--panel-header-h);
-  background: linear-gradient(to bottom, var(--color-bg-panel-header) 0%, #282828 100%);
+  background: var(--color-bg-panel-header);
   border-bottom: 1px solid var(--color-separator);
-  padding: 0 8px;
+  padding: 0 10px;
   gap: 6px;
   flex-shrink: 0;
   user-select: none;
@@ -376,8 +365,8 @@ input  { font-family: inherit; }
    VIEWPORT HEADER (Main panel navigation)
    ============================================================ */
 .viewport-header {
-  background: linear-gradient(to bottom, #3a3a3a 0%, #2e2e2e 100%);
-  border-bottom: 2px solid var(--color-separator);
+  background: var(--color-bg-panel-header);
+  border-bottom: 1px solid var(--color-separator);
 }
 
 .topbar-nav { display: flex; align-items: center; gap: 3px; }
@@ -732,62 +721,57 @@ input  { font-family: inherit; }
 }
 
 /* ============================================================
-   BUTTONS — Blender Embossed Style
+   BUTTONS — Blender 5.x Flat Style
    ============================================================ */
 .btn-icon {
-  background: linear-gradient(to bottom, var(--btn-grad-top), var(--btn-grad-bot));
-  border: 1px solid rgba(0,0,0,0.4);
-  box-shadow: var(--btn-emboss);
+  background: var(--color-btn);
+  border: 1px solid var(--color-btn-border);
   color: var(--color-text-secondary);
   width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-md);
   font-size: 13px;
   line-height: 1;
-  transition: background 0.1s, color 0.1s, box-shadow 0.1s;
+  transition: background 0.12s, color 0.12s;
 }
 .btn-icon:hover {
-  background: linear-gradient(to bottom, #4a4a4a, #383838);
+  background: var(--color-btn-hover);
   color: var(--color-text-primary);
 }
 .btn-icon:active {
-  background: var(--color-bg-base);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  background: var(--color-btn-active);
 }
 
 .btn-text {
-  background: linear-gradient(to bottom, var(--btn-grad-top), var(--btn-grad-bot));
-  border: 1px solid rgba(0,0,0,0.4);
-  box-shadow: var(--btn-emboss);
+  background: var(--color-btn);
+  border: 1px solid var(--color-btn-border);
   color: var(--color-text-primary);
   padding: 3px 10px;
   border-radius: var(--radius-md);
   font-size: 11px;
   font-weight: 500;
-  transition: background 0.1s, box-shadow 0.1s;
+  transition: background 0.12s;
   white-space: nowrap;
 }
 .btn-text:hover {
-  background: linear-gradient(to bottom, #4a4a4a, #383838);
+  background: var(--color-btn-hover);
 }
 .btn-text:active {
-  background: var(--color-bg-base);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  background: var(--color-btn-active);
 }
 
 .btn-theme {
-  background: linear-gradient(to bottom, var(--btn-grad-top), var(--btn-grad-bot));
-  border: 1px solid rgba(0,0,0,0.4);
-  box-shadow: var(--btn-emboss);
+  background: var(--color-btn);
+  border: 1px solid var(--color-btn-border);
   color: var(--color-text-primary);
   width: 24px; height: 22px;
   border-radius: var(--radius-md);
   font-size: 12px;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.1s;
+  transition: background 0.12s;
 }
 .btn-theme:hover {
-  background: linear-gradient(to bottom, #4a4a4a, #383838);
+  background: var(--color-btn-hover);
 }
 .btn-theme::before { content: var(--icon-theme); }
 
@@ -801,7 +785,7 @@ input  { font-family: inherit; }
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--color-wire);
-  background: linear-gradient(to bottom, var(--color-bg-panel-header) 0%, var(--color-bg-base) 100%);
+  background: var(--color-bg-panel-header);
   z-index: 5;
   transition: background-color 0.25s;
 }
@@ -1010,9 +994,9 @@ input  { font-family: inherit; }
 
 .modal {
   background-color: var(--color-bg-panel);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-panel);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
   width: 100%;
   max-width: 460px;
   max-height: 84vh;
@@ -1040,9 +1024,9 @@ input  { font-family: inherit; }
   justify-content: space-between;
   padding: 0 12px;
   height: var(--panel-header-h);
-  background: linear-gradient(to bottom, var(--color-bg-panel-header) 0%, #282828 100%);
+  background: var(--color-bg-panel-header);
   border-bottom: 1px solid var(--color-separator);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   gap: 8px;
   flex-shrink: 0;
 }
@@ -1051,9 +1035,8 @@ input  { font-family: inherit; }
 .modal-header-sub   { font-size: 10px; color: var(--color-text-disabled); margin-top: 0; display: none; }
 
 .modal-close-btn {
-  background: linear-gradient(to bottom, var(--btn-grad-top), var(--btn-grad-bot));
-  border: 1px solid rgba(0,0,0,0.4);
-  box-shadow: var(--btn-emboss);
+  background: var(--color-btn);
+  border: 1px solid var(--color-btn-border);
   color: var(--color-text-secondary);
   width: 20px; height: 20px;
   min-width: 20px; min-height: 20px;
@@ -1065,35 +1048,35 @@ input  { font-family: inherit; }
   position: relative;
   z-index: 10;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.12s, color 0.12s;
 }
 .modal-close-btn:hover {
-  background: linear-gradient(to bottom, #4a4a4a, #383838);
+  background: var(--color-btn-hover);
   color: var(--color-text-primary);
 }
 
 /* ── Form tabs (予定 / シフト) ── */
 .form-tab-bar {
   display: flex;
-  border-bottom: 1px solid var(--color-border-strong);
-  margin: 0 -20px 0;
-  padding: 0 20px;
-  gap: 0;
+  margin: 0 -16px 8px;
+  padding: 4px 16px;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .form-tab {
-  background: none;
+  background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  padding: 8px 14px 7px;
-  margin-bottom: -1px;
-  transition: color 0.12s, border-color 0.12s;
+  padding: 4px 12px;
+  transition: color 0.12s, background-color 0.12s;
+  cursor: pointer;
 }
-.form-tab:hover   { color: var(--color-text-primary); }
-.form-tab.is-active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+.form-tab:hover   { color: var(--color-text-primary); background: var(--color-bg-workspace-tab-hover); }
+.form-tab.is-active { color: var(--color-text-primary); background: var(--color-bg-workspace-tab-active); }
 
 /* ── Existing event list ── */
 .event-list-row {
@@ -1225,18 +1208,17 @@ input  { font-family: inherit; }
 .form-input {
   width: 100%;
   background-color: var(--color-bg-input);
-  border: 1px solid #1a1a1a;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
   color: var(--color-text-primary);
   padding: 5px 8px;
   font-size: 12px;
   outline: none;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 .form-input:focus {
   border-color: var(--color-accent);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 .form-input::placeholder { color: var(--color-text-disabled); }
 .form-input[type=number]::-webkit-inner-spin-button,
@@ -1251,8 +1233,8 @@ input  { font-family: inherit; }
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  border-radius: 20px;
-  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-soft);
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
@@ -1322,45 +1304,41 @@ input  { font-family: inherit; }
 }
 .link-btn:hover { opacity: 0.75; }
 
-/* — Primary / secondary buttons — */
+/* — Primary / secondary buttons (Blender 5.x flat) — */
 .btn-primary {
   width: 100%;
-  background: linear-gradient(to bottom, var(--btn-primary-top), var(--btn-primary-bot));
-  border: 1px solid rgba(0,0,0,0.35);
-  box-shadow: var(--btn-emboss);
+  background: var(--color-accent);
+  border: 1px solid var(--color-btn-border);
   color: #fff;
   padding: 6px 12px;
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
-  transition: background 0.1s, box-shadow 0.1s;
+  transition: background 0.12s, filter 0.12s;
   margin-top: 4px;
 }
 .btn-primary:hover {
-  background: linear-gradient(to bottom, #6590d4, var(--btn-primary-top));
+  background: var(--color-accent-hover);
 }
 .btn-primary:active {
-  background: var(--color-accent);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  filter: brightness(0.85);
 }
 
 .btn-secondary {
-  background: linear-gradient(to bottom, var(--btn-grad-top), var(--btn-grad-bot));
-  border: 1px solid rgba(0,0,0,0.4);
-  box-shadow: var(--btn-emboss);
+  background: var(--color-btn);
+  border: 1px solid var(--color-btn-border);
   color: var(--color-text-primary);
   padding: 5px 12px;
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 500;
-  transition: background 0.1s, box-shadow 0.1s;
+  transition: background 0.12s;
 }
 .btn-secondary:hover {
-  background: linear-gradient(to bottom, #4a4a4a, #383838);
+  background: var(--color-btn-hover);
 }
 .btn-secondary:active {
-  background: var(--color-bg-base);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  background: var(--color-btn-active);
 }
 
 .modal-footer {
@@ -1370,7 +1348,7 @@ input  { font-family: inherit; }
   padding: 8px 14px 12px;
   border-top: 1px solid var(--color-separator);
   background: var(--color-bg-panel-header);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 /* ============================================================
@@ -1384,20 +1362,23 @@ input  { font-family: inherit; }
 
 .budget-cat-tab {
   flex: 1;
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--color-text-muted);
-  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.12s, color 0.12s;
+}
+.budget-cat-tab:hover {
+  background: var(--color-bg-workspace-tab-hover);
+  color: var(--color-text-primary);
 }
 
 .budget-cat-tab.is-active {
   background: var(--color-accent);
   color: #fff;
-  border-color: var(--color-accent);
 }
 
 .bcat-icon-field {
@@ -1607,8 +1588,8 @@ input  { font-family: inherit; }
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  border-radius: 20px;
-  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-soft);
   cursor: pointer;
   font-size: 11.5px;
   font-weight: 500;
@@ -1761,24 +1742,24 @@ input  { font-family: inherit; }
 .auth-tab-bar {
   display: flex;
   width: 100%;
-  border-bottom: 1px solid var(--color-border-strong);
+  gap: 4px;
   margin-bottom: 16px;
 }
 
 .auth-tab {
   flex: 1;
-  background: none;
+  background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 500;
   padding: 7px 0 6px;
-  margin-bottom: -1px;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color 0.12s, background-color 0.12s;
+  cursor: pointer;
 }
-.auth-tab:hover    { color: var(--color-text-primary); }
-.auth-tab.is-active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+.auth-tab:hover    { color: var(--color-text-primary); background: var(--color-bg-workspace-tab-hover); }
+.auth-tab.is-active { color: var(--color-text-primary); background: var(--color-bg-workspace-tab-active); }
 
 .auth-form { width: 100%; }
 
@@ -1883,8 +1864,8 @@ input  { font-family: inherit; }
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  border-radius: 20px;
-  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-soft);
   cursor: pointer;
   font-size: 11.5px;
   font-weight: 500;
@@ -2125,7 +2106,7 @@ input  { font-family: inherit; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: calc(100vh - 60px);
+  min-height: 0; flex: 1;
 }
 
 /* ── Nav bar inside day view ── */
@@ -2136,7 +2117,7 @@ input  { font-family: inherit; }
   padding: 4px 12px;
   height: var(--panel-header-h);
   border-bottom: 1px solid var(--color-separator);
-  background: linear-gradient(to bottom, var(--color-bg-panel-header) 0%, var(--color-bg-base) 100%);
+  background: var(--color-bg-panel-header);
   position: sticky;
   top: 0;
   z-index: 4;
@@ -2334,7 +2315,7 @@ input  { font-family: inherit; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: calc(100vh - 60px);
+  min-height: 0; flex: 1;
 }
 
 /* ── Nav bar ── */
@@ -2345,7 +2326,7 @@ input  { font-family: inherit; }
   padding: 4px 12px;
   height: var(--panel-header-h);
   border-bottom: 1px solid var(--color-separator);
-  background: linear-gradient(to bottom, var(--color-bg-panel-header) 0%, var(--color-bg-base) 100%);
+  background: var(--color-bg-panel-header);
   flex-shrink: 0;
 }
 .wv-range {
@@ -2526,32 +2507,32 @@ input  { font-family: inherit; }
   height: 100%;
 }
 
+/* Blender 5.0+ pill-shaped property tabs */
 .bp-tab {
-  background: none;
+  background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--color-text-disabled);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  padding: 0 10px;
-  height: 100%;
+  padding: 3px 10px;
   display: flex;
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: color 0.1s, background-color 0.1s, border-color 0.1s;
+  transition: color 0.12s, background-color 0.12s;
   white-space: nowrap;
 }
 .bp-tab svg { flex-shrink: 0; opacity: 0.6; }
 .bp-tab:hover {
   color: var(--color-text-primary);
-  background: rgba(255,255,255,0.04);
+  background: var(--color-bg-workspace-tab-hover);
 }
 .bp-tab:hover svg { opacity: 0.9; }
 .bp-tab.is-active {
   color: var(--color-text-primary);
-  border-bottom-color: var(--color-accent);
+  background: var(--color-bg-workspace-tab-active);
 }
 .bp-tab.is-active svg { opacity: 1; }
 
@@ -2772,26 +2753,23 @@ input  { font-family: inherit; }
 /* ── Filter bar ── */
 .task-filter-bar {
   display: flex;
-  gap: 2px;
-  background: var(--color-bg-hover);
-  border-radius: 7px;
-  padding: 2.5px;
+  gap: 4px;
   margin-bottom: 10px;
-  max-width: 220px;
+  max-width: 260px;
 }
 .task-filter {
-  flex: 1; background: none; border: none; border-radius: 5px;
+  flex: 1; background: transparent; border: none;
+  border-radius: var(--radius-pill);
   color: var(--color-text-secondary);
-  font-size: 12px; font-weight: 600; padding: 4px 0;
+  font-size: 11px; font-weight: 600; padding: 4px 0;
   cursor: pointer; text-align: center;
   transition: background-color 0.12s, color 0.12s;
 }
 .task-filter.is-active {
-  background: var(--color-bg-base);
+  background: var(--color-bg-workspace-tab-active);
   color: var(--color-text-primary);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
-.task-filter:not(.is-active):hover { color: var(--color-text-primary); }
+.task-filter:not(.is-active):hover { color: var(--color-text-primary); background: var(--color-bg-workspace-tab-hover); }
 
 /* ── Task list ── */
 .task-list {
@@ -3174,26 +3152,23 @@ input  { font-family: inherit; }
 /* ── Filter bar ── */
 .budget-filter-bar {
   display: flex;
-  gap: 2px;
-  background: var(--color-bg-hover);
-  border-radius: 7px;
-  padding: 2.5px;
+  gap: 4px;
   margin-bottom: 10px;
-  max-width: 250px;
+  max-width: 260px;
 }
 .budget-filter {
-  flex: 1; background: none; border: none; border-radius: 5px;
+  flex: 1; background: transparent; border: none;
+  border-radius: var(--radius-pill);
   color: var(--color-text-secondary);
-  font-size: 12px; font-weight: 600; padding: 4px 0;
+  font-size: 11px; font-weight: 600; padding: 4px 0;
   cursor: pointer; text-align: center;
   transition: background-color 0.12s, color 0.12s;
 }
 .budget-filter.is-active {
-  background: var(--color-bg-base);
+  background: var(--color-bg-workspace-tab-active);
   color: var(--color-text-primary);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
-.budget-filter:not(.is-active):hover { color: var(--color-text-primary); }
+.budget-filter:not(.is-active):hover { color: var(--color-text-primary); background: var(--color-bg-workspace-tab-hover); }
 
 /* ── Month header ── */
 .budget-month-header {
