@@ -722,6 +722,63 @@ input  { font-family: inherit; }
 }
 
 /* ============================================================
+   CLEAN CALENDAR (sidebar)
+   ============================================================ */
+.clean-cal {
+  margin: 6px 8px 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-separator);
+  transition: background-color 0.25s, border-color 0.25s;
+}
+.clean-day {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+.clean-day:last-child { border-bottom: none; }
+.clean-day.is-today { font-weight: 700; }
+.clean-day-label {
+  width: 28px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.clean-day.is-today .clean-day-label {
+  color: var(--color-accent);
+}
+.clean-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.clean-type {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.clean-type-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.clean-type-name {
+  font-size: 10px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.clean-none {
+  font-size: 10px;
+  color: var(--color-text-disabled);
+  text-align: center;
+  padding: 4px 0 2px;
+}
+
+/* ============================================================
    MAIN AREA
    ============================================================ */
 .main {
