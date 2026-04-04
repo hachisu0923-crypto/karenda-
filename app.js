@@ -870,8 +870,8 @@ function mkMini(day,isOther,isToday,hasEv,isSun,isSat) {
 
 function renderMain() {
   const y=curDate.getFullYear(), m=curDate.getMonth(), today=new Date();
-  document.getElementById('js-topbar-title').textContent=`${MONTHS_EN[m]} ${y}`;
-  document.getElementById('js-topbar-sub').textContent=`${y}年 ${MONTHS_JA[m]}`;
+  document.getElementById('js-topbar-title').textContent=`${MONTHS_INIT[m]} ${y}`;
+  document.getElementById('js-topbar-sub').textContent='';
 
   const grid=document.getElementById('js-cal-grid');
   grid.innerHTML='';
