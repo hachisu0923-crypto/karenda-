@@ -321,9 +321,15 @@ function monthlySalary() {
 
 function setSyncStatus(status) { // 'syncing' | 'synced' | 'error'
   const el = document.getElementById('js-sync-indicator');
-  if (!el) return;
-  el.className = 'sync-indicator ' + status;
-  el.title = status === 'syncing' ? '同期中...' : status === 'synced' ? '同期済み' : '同期エラー';
+  if (el) {
+    el.className = 'sync-indicator ' + status;
+    el.title = status === 'syncing' ? '同期中...' : status === 'synced' ? '同期済み' : '同期エラー';
+  }
+  const elStatus = document.getElementById('js-status-sync');
+  if (elStatus) {
+    elStatus.textContent = status === 'syncing' ? '⟳ 同期中' : status === 'synced' ? '✓ 同期済み' : '✕ エラー';
+    elStatus.style.color = status === 'error' ? 'var(--color-danger)' : status === 'synced' ? 'var(--color-positive)' : '';
+  }
 }
 
 // ── Supabase: load data ───────────────────────────────────────────────────────
@@ -1730,6 +1736,32 @@ function escHtml(s){
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── Status Bar ────────────────────────────────────────────────────────────────
+
+const VIEW_LABELS = { month: '月ビュー', week: '週ビュー', day: '日ビュー' };
+
+function updateStatusBar() {
+  const elView   = document.getElementById('js-status-view');
+  const elDate   = document.getElementById('js-status-date');
+  const elEvents = document.getElementById('js-status-events');
+  if (!elView) return;
+
+  elView.textContent = VIEW_LABELS[currentView] || currentView;
+
+  const y = curDate.getFullYear(), m = curDate.getMonth();
+  const monthStr = `${y}年${m+1}月`;
+  elDate.textContent = monthStr;
+
+  // Count events in current month
+  const dim = new Date(y, m + 1, 0).getDate();
+  let totalEv = 0;
+  for (let d = 1; d <= dim; d++) {
+    const k = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    totalEv += (events[k] || []).length;
+  }
+  elEvents.textContent = `${totalEv} 件のイベント`;
+}
+
 // ── Render all ────────────────────────────────────────────────────────────────
 
 function renderAll(){
@@ -1738,6 +1770,7 @@ function renderAll(){
   renderSidebar();
   if (currentView === 'day')  renderDayView();
   if (currentView === 'week') renderWeekView();
+  updateStatusBar();
 
   // Keep Task panel in sync
   if (typeof _taskState !== 'undefined' && _taskState) {
@@ -1753,6 +1786,19 @@ function renderAll(){
 
 applyTheme(isDark);
 // Auth state change will trigger showApp() → loadFromSupabase() → renderAll()
+
+// ── Sidebar section toggle (Blender-style collapsible panels) ────────────────
+document.querySelectorAll('.sidebar-section-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const body = btn.nextElementSibling;
+    const chevron = btn.querySelector('.section-chevron');
+    if (!body) return;
+    const isCollapsed = body.classList.toggle('is-collapsed');
+    if (chevron) {
+      chevron.classList.toggle('is-open', !isCollapsed);
+    }
+  });
+});
 
 // ════════════════════════════════════════════════════════════
 //  DAY VIEW
@@ -1771,7 +1817,8 @@ function switchView(view) {
   document.getElementById('js-month-view').style.display = view === 'month' ? '' : 'none';
   document.getElementById('js-week-view').style.display  = view === 'week'  ? '' : 'none';
   document.getElementById('js-day-view').style.display   = view === 'day'   ? '' : 'none';
-  document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
+  document.querySelectorAll('.view-tab, .workspace-tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
+  updateStatusBar();
   if (view === 'day') {
     dvDate = new Date(curDate);
     renderDayView();
