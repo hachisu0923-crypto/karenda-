@@ -1016,8 +1016,8 @@ function buildCell(y,m,d,isOther,isToday) {
 function openDayModal(y,m,d) {
   selectedKey=dateKey(y,m,d);
   const dow=new Date(y,m,d).getDay();
-  document.getElementById('js-day-modal-title').textContent=`${y}年 ${MONTHS_JA[m]} ${d}日`;
-  document.getElementById('js-day-modal-sub').textContent=`${DAYS_JA[dow]}曜日`;
+  document.getElementById('js-day-modal-title').textContent=`${MONTHS_INIT[m]} ${d}, ${y}`;
+  document.getElementById('js-day-modal-sub').textContent=DAYS_EN[dow];
 
   document.getElementById('js-ev-title').value='';
   document.getElementById('js-ev-time-start').value='';
@@ -1218,7 +1218,7 @@ function openEditModal(ev) {
   const [y,m,d] = selectedKey.split('-').map(Number);
   document.getElementById('js-edit-modal-title').textContent = isS ? 'シフトを編集' : '予定を編集';
   document.getElementById('js-edit-modal-sub').textContent =
-    `${y}年 ${MONTHS_JA[m-1]} ${d}日（${DAYS_JA[new Date(y,m-1,d).getDay()]}）`;
+    `${MONTHS_INIT[m-1]} ${d}, ${y} (${DAYS_EN[new Date(y,m-1,d).getDay()]})`;
 
   // Show the right form
   document.getElementById('js-edit-tab-event').style.display = isS ? 'none' : '';
@@ -1771,7 +1771,7 @@ function escHtml(s){
 
 // ── Status Bar ────────────────────────────────────────────────────────────────
 
-const VIEW_LABELS = { month: '月ビュー', week: '週ビュー', day: '日ビュー' };
+const VIEW_LABELS = { month: 'Month', week: 'Week', day: 'Day' };
 
 function updateStatusBar() {
   const elView   = document.getElementById('js-status-view');
@@ -2156,7 +2156,7 @@ function renderWeekView() {
     const head = document.createElement('div');
     head.className = ['wv-col-head', isToday ? 'is-today' : '', dow===0 ? 'is-sun' : '', dow===6 ? 'is-sat' : ''].filter(Boolean).join(' ');
     head.innerHTML =
-      `<span class="wv-head-dow">${DAYS_JA[dow]}</span>` +
+      `<span class="wv-head-dow">${DAYS_EN[dow]}</span>` +
       `<span class="wv-head-num${isToday ? ' is-today' : ''}">${d.getDate()}</span>` +
       (holidayName ? `<span class="wv-head-holiday">${escHtml(holidayName)}</span>` : '');
     head.addEventListener('click', () => { dvDate = new Date(d); switchView('day'); });
@@ -2491,9 +2491,9 @@ function _formatGoalDate(dateStr) {
   const today    = _todayStr();
   const tomorrow = _dateAddDays(today, 1);
   const [, m, d] = dateStr.split('-');
-  const base = `${parseInt(m)}月${parseInt(d)}日`;
-  if (dateStr === today)    return `今日 (${base})`;
-  if (dateStr === tomorrow) return `明日 (${base})`;
+  const base = `${MONTHS_INIT[parseInt(m)-1]} ${parseInt(d)}`;
+  if (dateStr === today)    return `Today (${base})`;
+  if (dateStr === tomorrow) return `Tomorrow (${base})`;
   return base;
 }
 
@@ -3803,7 +3803,7 @@ function _updateDailyPlanLabel() {
   if (!val) return;
   const d = new Date(val + 'T00:00:00');
   const label = document.getElementById('js-daily-plan-date-label');
-  label.textContent = `${d.getFullYear()}年 ${MONTHS_JA[d.getMonth()]} ${d.getDate()}日（${DAYS_JA[d.getDay()]}）`;
+  label.textContent = `${MONTHS_INIT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} (${DAYS_EN[d.getDay()]})`;
 }
 
 document.getElementById('js-daily-plan-date').addEventListener('change', _updateDailyPlanLabel);
