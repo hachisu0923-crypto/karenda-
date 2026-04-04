@@ -2531,6 +2531,7 @@ input  { font-family: inherit; }
 .bottom-panel > .bp-section {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ── Panel tab bar (inside blender-panel-header) ── */
@@ -2580,6 +2581,8 @@ input  { font-family: inherit; }
 .bp-section {
   max-width: 100%;
   padding: 10px 16px 16px;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .bp-section-head {
@@ -2607,6 +2610,7 @@ input  { font-family: inherit; }
   display: flex;
   gap: 6px;
   margin-top: 10px;
+  max-width: 100%;
 }
 
 .bp-add-input {
