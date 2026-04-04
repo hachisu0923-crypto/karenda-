@@ -596,6 +596,7 @@ async function showApp(user) {
   initTaskPanel(user);
   initBudgetPanel(user);
   initBottomPanelTabs();
+  initBottomPanelSwipe();
 
   await loadFromSupabase();
   // 祝日データをフェッチ（今年・来年）してから再描画
@@ -2344,6 +2345,66 @@ function initBottomPanelTabs() {
       if (target === 'budget') renderBudgetPanel();
     });
   });
+}
+
+// ════════════════════════════════════════════════════════════
+//  BOTTOM PANEL SWIPE (mobile)
+// ════════════════════════════════════════════════════════════
+
+function initBottomPanelSwipe() {
+  const panel = document.querySelector('.bottom-panel');
+  const handle = document.querySelector('.bp-swipe-handle');
+  if (!panel || !handle) return;
+
+  let startY = 0;
+  let dragging = false;
+
+  handle.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    dragging = true;
+    panel.style.transition = 'none';
+  }, { passive: true });
+
+  handle.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    e.preventDefault();
+    const dy = startY - e.touches[0].clientY;
+    const isExpanded = panel.classList.contains('is-expanded');
+
+    if (isExpanded) {
+      // 展開時: 下にドラッグで閉じるプレビュー
+      const top = Math.max(0, -dy);
+      panel.style.transform = `translateY(${top}px)`;
+    } else {
+      // 縮小時: 上にドラッグで展開プレビュー
+      const lift = Math.max(0, dy);
+      panel.style.height = `${180 + lift}px`;
+    }
+  }, { passive: false });
+
+  handle.addEventListener('touchend', e => {
+    if (!dragging) return;
+    dragging = false;
+    const dy = startY - e.changedTouches[0].clientY;
+    const isExpanded = panel.classList.contains('is-expanded');
+
+    panel.style.transition = '';
+    panel.style.transform = '';
+
+    if (isExpanded) {
+      // 展開中に下スワイプ → 閉じる
+      if (dy < -80) {
+        panel.classList.remove('is-expanded');
+        panel.style.height = '';
+      }
+    } else {
+      // 縮小中に上スワイプ → 展開
+      panel.style.height = '';
+      if (dy > 80) {
+        panel.classList.add('is-expanded');
+      }
+    }
+  }, { passive: true });
 }
 
 

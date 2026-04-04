@@ -2490,13 +2490,43 @@ input  { font-family: inherit; }
   border-top: 2px solid var(--color-separator);
   background-color: var(--color-bg-base);
   padding: 0;
-  transition: background-color 0.25s, border-color 0.25s;
+  transition: background-color 0.25s, border-color 0.25s, height 0.3s ease;
   flex-shrink: 0;
   height: 220px;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.bottom-panel.is-expanded {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh !important;
+  z-index: 1000;
+  border-top: none;
+}
+
+/* ── Swipe handle (mobile only) ── */
+.bp-swipe-handle {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0 4px;
+  cursor: grab;
+  touch-action: none;
+}
+.bp-swipe-bar {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.3);
+  transition: background 0.2s;
+}
+.bp-swipe-handle:active .bp-swipe-bar {
+  background: rgba(255,255,255,0.5);
 }
 .bottom-panel > .bp-section {
   flex: 1;
@@ -2986,6 +3016,7 @@ input  { font-family: inherit; }
 /* ── Mobile bottom panel ── */
 @media (max-width: 720px) {
   .bottom-panel { height: 180px; }
+  .bp-swipe-handle { display: flex; }
   .bp-section { max-width: 100%; }
   .bp-tab { padding: 0 8px; font-size: 10px; }
   .task-filter-bar { max-width: 100%; }
