@@ -1,7 +1,8 @@
 /* ============================================================
-   TYPOGRAPHY — Blender uses system sans-serif / DejaVuSans
+   TYPOGRAPHY — Blender uses DejaVu Sans as its UI font
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.cdnfonts.com/css/dejavu-sans');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ============================================================
    COLOR TOKENS — Blender Dark Theme (default)
@@ -170,7 +171,7 @@
 body {
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'DejaVu Sans', 'Noto Sans JP', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
   line-height: 1.45;
   min-height: 100vh;
