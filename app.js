@@ -1629,22 +1629,31 @@ document.getElementById('js-next-month').addEventListener('click',()=>{curDate.s
 // ── Swipe navigation (month view) ──────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-month-view');
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    tracking = true;
+    swiped = false;
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      curDate.setMonth(curDate.getMonth() + 1);
-    } else {
-      curDate.setMonth(curDate.getMonth() - 1);
+  el.addEventListener('touchmove', e => {
+    if (!tracking || swiped) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    // 横方向が十分で、縦方向より大きいとき
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      tracking = false;
+      e.preventDefault();
+      if (dx < 0) {
+        curDate.setMonth(curDate.getMonth() + 1);
+      } else {
+        curDate.setMonth(curDate.getMonth() - 1);
+      }
+      renderAll();
     }
-    renderAll();
-  }, { passive: true });
+  }, { passive: false });
+  el.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 document.getElementById('js-today').addEventListener('click',()=>{curDate=new Date();renderAll();});
@@ -1874,22 +1883,30 @@ document.getElementById('js-dv-add').addEventListener('click', () => {
 // ── Swipe navigation (day view) ───────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-day-view');
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    tracking = true;
+    swiped = false;
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      dvDate.setDate(dvDate.getDate() + 1);
-    } else {
-      dvDate.setDate(dvDate.getDate() - 1);
+  el.addEventListener('touchmove', e => {
+    if (!tracking || swiped) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      tracking = false;
+      e.preventDefault();
+      if (dx < 0) {
+        dvDate.setDate(dvDate.getDate() + 1);
+      } else {
+        dvDate.setDate(dvDate.getDate() - 1);
+      }
+      renderDayView();
     }
-    renderDayView();
-  }, { passive: true });
+  }, { passive: false });
+  el.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 // ── Helpers ───────────────────────────────────────────────
@@ -2294,22 +2311,30 @@ document.getElementById('js-wv-add').addEventListener('click', () => {
 // ── Swipe navigation (week view) ──────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-week-view');
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    tracking = true;
+    swiped = false;
   }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) {
-      wvDate.setDate(wvDate.getDate() + 7);
-    } else {
-      wvDate.setDate(wvDate.getDate() - 7);
+  el.addEventListener('touchmove', e => {
+    if (!tracking || swiped) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      tracking = false;
+      e.preventDefault();
+      if (dx < 0) {
+        wvDate.setDate(wvDate.getDate() + 7);
+      } else {
+        wvDate.setDate(wvDate.getDate() - 7);
+      }
+      renderWeekView();
     }
-    renderWeekView();
-  }, { passive: true });
+  }, { passive: false });
+  el.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 
