@@ -68,6 +68,8 @@ function ensureDb(){
 
 const MONTHS_EN = ['January','February','March','April','May','June',
                    'July','August','September','October','November','December'];
+const MONTHS_INIT = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+const DAYS_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS_JA = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const DAYS_JA   = ['日','月','火','水','木','金','土'];
 
@@ -839,7 +841,7 @@ function renderSidebar() {
 
 function renderMini() {
   const y=curDate.getFullYear(), m=curDate.getMonth(), today=new Date();
-  document.getElementById('js-mini-month').textContent = `${y}年${m+1}月`;
+  document.getElementById('js-mini-month').textContent = `${MONTHS_INIT[m]} ${y}`;
   const grid=document.getElementById('js-mini-grid');
   grid.innerHTML='';
   const first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), prev=new Date(y,m,0).getDate();
@@ -1780,7 +1782,7 @@ function updateStatusBar() {
   elView.textContent = VIEW_LABELS[currentView] || currentView;
 
   const y = curDate.getFullYear(), m = curDate.getMonth();
-  const monthStr = `${y}年${m+1}月`;
+  const monthStr = `${MONTHS_INIT[m]} ${y}`;
   elDate.textContent = monthStr;
 
   // Count events in current month
@@ -1942,7 +1944,7 @@ function renderDayView() {
   const _dvHoliday = getHolidayName(key);
   dateEl.innerHTML = `
     <span class="dv-date-num ${isToday ? 'is-today' : ''} ${dow===0?'is-sun':dow===6?'is-sat':''}">${d}</span>
-    <span class="dv-date-label">${y}年 ${m+1}月 &nbsp;${DAYS[dow]}曜日</span>
+    <span class="dv-date-label">${MONTHS_INIT[m]} ${y} &nbsp;${DAYS_EN[dow]}</span>
     ${_dvHoliday ? `<span class="dv-holiday-badge">${escHtml(_dvHoliday)}</span>` : ''}`;
 
   // Time column
@@ -2125,9 +2127,9 @@ function renderWeekView() {
   const wEnd = new Date(weekStart); wEnd.setDate(wEnd.getDate() + 6);
   const rangeEl = document.getElementById('js-wv-range');
   if (weekStart.getMonth() === wEnd.getMonth()) {
-    rangeEl.textContent = `${weekStart.getFullYear()}年 ${weekStart.getMonth()+1}月 ${weekStart.getDate()}日 〜 ${wEnd.getDate()}日`;
+    rangeEl.textContent = `${MONTHS_INIT[weekStart.getMonth()]} ${weekStart.getDate()} – ${wEnd.getDate()}, ${weekStart.getFullYear()}`;
   } else {
-    rangeEl.textContent = `${weekStart.getFullYear()}年 ${weekStart.getMonth()+1}月 ${weekStart.getDate()}日 〜 ${wEnd.getFullYear()}年 ${wEnd.getMonth()+1}月 ${wEnd.getDate()}日`;
+    rangeEl.textContent = `${MONTHS_INIT[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS_INIT[wEnd.getMonth()]} ${wEnd.getDate()}, ${wEnd.getFullYear()}`;
   }
 
   // Build 7 date objects (Sun–Sat)
@@ -3242,7 +3244,7 @@ function renderBudgetPanel() {
   var y = +parts0[0], m = +parts0[1]; // 1-based
 
   var monthLabel = document.getElementById('js-budget-month-label');
-  if (monthLabel) monthLabel.textContent = y + '\u5E74' + m + '\u6708';
+  if (monthLabel) monthLabel.textContent = MONTHS_INIT[m - 1] + ' ' + y;
 
   // ── Collect shift earnings from the PREVIOUS month ──
   var shift = _collectPrevMonthShifts(y, m);
