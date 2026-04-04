@@ -836,6 +836,7 @@ function renderSidebar() {
   });
 
   renderSalarySummary();
+  renderCleanCalendar();
 }
 
 // ── Mini calendar ─────────────────────────────────────────────────────────────
@@ -2505,6 +2506,55 @@ function initBottomPanelResize() {
   });
 }
 
+
+// ════════════════════════════════════════════════════════════
+//  CLEAN CALENDAR (ごみ収集カレンダー)
+// ════════════════════════════════════════════════════════════
+
+const CLEAN_SCHEDULE = {
+  // key = JS dayOfWeek (0=Sun … 6=Sat)
+  2: [{ type: 'もやすごみ', color: '#e06050' }, { type: '生ごみ', color: '#4caf50' }],
+  3: [{ type: 'プラマークごみ', color: '#ff9800' }],
+  4: [{ type: 'びん・カン', color: '#42a5f5' }],
+  5: [{ type: 'もやすごみ', color: '#e06050' }, { type: '生ごみ', color: '#4caf50' }],
+};
+
+const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+function renderCleanCalendar() {
+  const box = document.getElementById('js-clean-cal');
+  if (!box) return;
+  box.innerHTML = '';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let shown = 0;
+
+  for (let i = 0; i < 7 && shown < 4; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dow = d.getDay();
+    const items = CLEAN_SCHEDULE[dow];
+    if (!items) continue;
+
+    shown++;
+    const row = document.createElement('div');
+    row.className = 'clean-day' + (i === 0 ? ' is-today' : '');
+
+    const label = i === 0 ? '今日' : i === 1 ? '明日' : `${d.getMonth() + 1}/${d.getDate()}(${DAY_LABELS[dow]})`;
+
+    let typesHtml = items.map(t =>
+      `<span class="clean-type"><span class="clean-type-dot" style="background:${t.color}"></span><span class="clean-type-name">${escHtml(t.type)}</span></span>`
+    ).join('');
+
+    row.innerHTML = `<span class="clean-day-label">${label}</span><span class="clean-types">${typesHtml}</span>`;
+    box.appendChild(row);
+  }
+
+  if (!shown) {
+    box.innerHTML = '<div class="clean-none">今週の収集はありません</div>';
+  }
+}
 
 // ════════════════════════════════════════════════════════════
 //  TASK MANAGEMENT
