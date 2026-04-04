@@ -3025,6 +3025,8 @@ input  { font-family: inherit; }
   .task-date-input { width: 100px; font-size: 11px; }
   .task-priority-select { width: 46px; font-size: 11px; }
   .bp-add-input { font-size: 13px; }
+  .bp-add-form { flex-wrap: wrap; }
+  .bp-add-form .bp-add-input { flex-basis: 100%; }
 }
 
 /* ── Mobile day view ── */
