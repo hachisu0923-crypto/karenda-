@@ -714,8 +714,7 @@ input  { font-family: inherit; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-width: 0;
   height: 100%;
 }
@@ -778,7 +777,7 @@ input  { font-family: inherit; }
 /* ============================================================
    CALENDAR GRID (Viewport-style)
    ============================================================ */
-.calendar-wrap { overflow-x: auto; flex: 1; }
+.calendar-wrap { overflow: auto; flex: 1; min-height: 0; }
 .calendar      { min-width: 560px; width: 100%; height: 100%; display: flex; flex-direction: column; }
 
 .weekdays-row {
@@ -2489,7 +2488,15 @@ input  { font-family: inherit; }
   background-color: var(--color-bg-base);
   padding: 0;
   transition: background-color 0.25s, border-color 0.25s;
-  max-height: 260px;
+  flex-shrink: 0;
+  height: 220px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bottom-panel > .bp-section {
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -2975,7 +2982,7 @@ input  { font-family: inherit; }
 
 /* ── Mobile bottom panel ── */
 @media (max-width: 720px) {
-  .bottom-panel { max-height: 200px; }
+  .bottom-panel { height: 180px; }
   .bp-section { max-width: 100%; }
   .bp-tab { padding: 0 8px; font-size: 10px; }
   .task-filter-bar { max-width: 100%; }
