@@ -54,81 +54,120 @@
 
 <!-- ═══════════ APP (hidden until auth) ═══════════ -->
 <div id="js-app" style="display:none">
+<div class="app-shell">
+
+<!-- ═══ BLENDER TOP MENU BAR ═══ -->
+<div class="blender-menubar">
+  <div class="blender-menubar-left">
+    <div class="blender-logo">📅</div>
+    <span class="blender-app-name">My Calendar</span>
+    <span class="blender-menubar-sep"></span>
+    <span class="sync-indicator" id="js-sync-indicator" title="同期状態"></span>
+  </div>
+  <div class="blender-workspace-tabs">
+    <button class="workspace-tab is-active" id="js-tab-month" data-view="month">
+      <svg class="workspace-tab-icon" viewBox="0 0 16 16" width="14" height="14"><rect x="1" y="2" width="14" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="15" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.4"/><line x1="8" y1="5.5" x2="8" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.4"/><line x1="11" y1="5.5" x2="11" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.4"/></svg>
+      月ビュー
+    </button>
+    <button class="workspace-tab" id="js-tab-week" data-view="week">
+      <svg class="workspace-tab-icon" viewBox="0 0 16 16" width="14" height="14"><rect x="1" y="2" width="14" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="15" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="3.3" y1="2" x2="3.3" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.5"/><line x1="5.6" y1="2" x2="5.6" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.5"/><line x1="8" y1="2" x2="8" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.5"/><line x1="10.4" y1="2" x2="10.4" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.5"/><line x1="12.7" y1="2" x2="12.7" y2="14" stroke="currentColor" stroke-width="0.6" opacity="0.5"/></svg>
+      週ビュー
+    </button>
+    <button class="workspace-tab" id="js-tab-day" data-view="day">
+      <svg class="workspace-tab-icon" viewBox="0 0 16 16" width="14" height="14"><rect x="3" y="2" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="3" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="7.5" x2="11" y2="7.5" stroke="currentColor" stroke-width="0.5" opacity="0.3"/><line x1="5" y1="9.5" x2="11" y2="9.5" stroke="currentColor" stroke-width="0.5" opacity="0.3"/><line x1="5" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="0.5" opacity="0.3"/></svg>
+      日ビュー
+    </button>
+  </div>
+  <div class="blender-menubar-right">
+    <button class="btn-theme" id="js-theme-toggle" title="テーマ切替"></button>
+  </div>
+</div>
 
 <div class="layout">
 
-  <!-- ═══ SIDEBAR ═══ -->
+  <!-- ═══ SIDEBAR (Outliner Panel) ═══ -->
   <aside class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-logo">📅</div>
-      <span class="sidebar-title">My Calendar</span>
+    <div class="blender-panel-header">
+      <span class="panel-grip"></span>
+      <svg class="panel-icon" viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="4" r="1.5" fill="currentColor"/><line x1="7" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.2"/><circle cx="4" cy="8" r="1.5" fill="currentColor"/><line x1="7" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.2"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><line x1="7" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.2"/></svg>
+      <span class="panel-header-title">Outliner</span>
     </div>
 
-    <div class="mini-cal">
-      <div class="mini-cal-header">
-        <button class="mini-nav-btn" id="js-mini-prev">‹</button>
-        <span class="mini-cal-month" id="js-mini-month"></span>
-        <button class="mini-nav-btn" id="js-mini-next">›</button>
+    <div class="sidebar-section" id="js-section-minical">
+      <button class="sidebar-section-toggle" data-section="minical">
+        <span class="section-chevron is-open">▼</span>
+        <span class="sidebar-section-label">ミニカレンダー</span>
+      </button>
+      <div class="sidebar-section-body">
+        <div class="mini-cal">
+          <div class="mini-cal-header">
+            <button class="mini-nav-btn" id="js-mini-prev">‹</button>
+            <span class="mini-cal-month" id="js-mini-month"></span>
+            <button class="mini-nav-btn" id="js-mini-next">›</button>
+          </div>
+          <div class="mini-weekdays">
+            <span class="mini-wd">日</span><span class="mini-wd">月</span>
+            <span class="mini-wd">火</span><span class="mini-wd">水</span>
+            <span class="mini-wd">木</span><span class="mini-wd">金</span>
+            <span class="mini-wd">土</span>
+          </div>
+          <div class="mini-grid" id="js-mini-grid"></div>
+        </div>
       </div>
-      <div class="mini-weekdays">
-        <span class="mini-wd">日</span><span class="mini-wd">月</span>
-        <span class="mini-wd">火</span><span class="mini-wd">水</span>
-        <span class="mini-wd">木</span><span class="mini-wd">金</span>
-        <span class="mini-wd">土</span>
-      </div>
-      <div class="mini-grid" id="js-mini-grid"></div>
     </div>
 
-    <div class="sidebar-divider"></div>
+    <div class="sidebar-section" id="js-section-categories">
+      <button class="sidebar-section-toggle" data-section="categories">
+        <span class="section-chevron is-open">▼</span>
+        <span class="sidebar-section-label">カテゴリ</span>
+      </button>
+      <div class="sidebar-section-body">
+        <div class="category-list" id="js-category-list"></div>
+        <button class="sidebar-btn" id="js-open-cat-editor">
+          <span style="font-size:16px;line-height:1">+</span>
+          <span>カテゴリを編集</span>
+        </button>
+      </div>
+    </div>
 
-    <span class="sidebar-section-label">カテゴリ</span>
-    <div class="category-list" id="js-category-list"></div>
-    <button class="sidebar-btn" id="js-open-cat-editor">
-      <span style="font-size:16px;line-height:1">+</span>
-      <span>カテゴリを編集</span>
-    </button>
-
-    <div class="sidebar-divider"></div>
-
-    <span class="sidebar-section-label">今月の給料</span>
-    <div class="salary-summary" id="js-salary-summary"></div>
+    <div class="sidebar-section" id="js-section-salary">
+      <button class="sidebar-section-toggle" data-section="salary">
+        <span class="section-chevron is-open">▼</span>
+        <span class="sidebar-section-label">今月の給料</span>
+      </button>
+      <div class="sidebar-section-body">
+        <div class="salary-summary" id="js-salary-summary"></div>
+      </div>
+    </div>
 
     <div style="flex:1"></div>
 
     <!-- User info + logout -->
-    <div class="sidebar-divider"></div>
-    <div class="user-row">
-      <span class="user-email" id="js-user-email"></span>
-      <button class="btn-logout" id="js-logout">ログアウト</button>
+    <div class="sidebar-user-area">
+      <div class="user-row">
+        <span class="user-email" id="js-user-email"></span>
+        <button class="btn-logout" id="js-logout">ログアウト</button>
+      </div>
     </div>
   </aside>
 
-  <!-- ═══ MAIN ═══ -->
+  <!-- ═══ MAIN (Viewport Panel) ═══ -->
   <div class="main">
-    <header class="topbar">
-      <div class="topbar-left">
-        <div class="topbar-nav">
-          <button class="btn-icon" id="js-prev-month">‹</button>
-          <button class="btn-text" id="js-today">今日</button>
-          <button class="btn-icon" id="js-next-month">›</button>
-        </div>
-        <div>
-          <div class="topbar-title" id="js-topbar-title"></div>
-          <div class="topbar-sub"   id="js-topbar-sub"></div>
-        </div>
+    <div class="blender-panel-header viewport-header">
+      <span class="panel-grip"></span>
+      <svg class="panel-icon" viewBox="0 0 16 16" width="14" height="14"><rect x="1" y="1" width="14" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="0.6" opacity="0.3"/><line x1="8" y1="1" x2="8" y2="15" stroke="currentColor" stroke-width="0.6" opacity="0.3"/><circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg>
+      <span class="panel-header-title">Calendar Viewport</span>
+      <span class="panel-header-sep"></span>
+      <div class="topbar-nav">
+        <button class="btn-icon" id="js-prev-month">‹</button>
+        <button class="btn-text" id="js-today">今日</button>
+        <button class="btn-icon" id="js-next-month">›</button>
       </div>
-      <div class="topbar-right">
-        <!-- View mode tabs -->
-        <div class="view-tab-bar">
-          <button class="view-tab is-active" id="js-tab-month" data-view="month">月</button>
-          <button class="view-tab" id="js-tab-week"  data-view="week">週</button>
-          <button class="view-tab" id="js-tab-day"   data-view="day">日</button>
-        </div>
-        <!-- Sync indicator -->
-        <span class="sync-indicator" id="js-sync-indicator" title="同期状態"></span>
-        <button class="btn-theme" id="js-theme-toggle" title="テーマ切替"></button>
+      <div class="topbar-title-group">
+        <div class="topbar-title" id="js-topbar-title"></div>
+        <div class="topbar-sub" id="js-topbar-sub"></div>
       </div>
-    </header>
+    </div>
 
     <!-- ── Month view ── -->
     <div class="calendar-wrap" id="js-month-view">
@@ -184,10 +223,25 @@
 
     <!-- ── Bottom panel: 目標 / Task / 家計簿 ── -->
     <div class="bottom-panel">
-      <div class="bp-tab-bar">
-        <button class="bp-tab is-active" data-bp="goal">目標</button>
-        <button class="bp-tab" data-bp="task">タスク</button>
-        <button class="bp-tab" data-bp="budget">家計簿</button>
+      <div class="blender-panel-header bp-panel-header">
+        <span class="panel-grip"></span>
+        <svg class="panel-icon" viewBox="0 0 16 16" width="14" height="14"><rect x="1" y="1" width="14" height="6" rx="1" fill="currentColor" opacity="0.3"/><line x1="3" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.2"/><line x1="3" y1="13" x2="10" y2="13" stroke="currentColor" stroke-width="1.2"/></svg>
+        <span class="panel-header-title">Properties</span>
+        <span class="panel-header-sep"></span>
+        <div class="bp-tab-bar">
+          <button class="bp-tab is-active" data-bp="goal">
+            <svg viewBox="0 0 12 12" width="11" height="11"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="6" r="2" fill="currentColor"/></svg>
+            目標
+          </button>
+          <button class="bp-tab" data-bp="task">
+            <svg viewBox="0 0 12 12" width="11" height="11"><rect x="1" y="2" width="10" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="3" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1"/><line x1="3" y1="7.5" x2="7" y2="7.5" stroke="currentColor" stroke-width="1"/></svg>
+            タスク
+          </button>
+          <button class="bp-tab" data-bp="budget">
+            <svg viewBox="0 0 12 12" width="11" height="11"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="3" x2="6" y2="9" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="4.5" x2="8" y2="4.5" stroke="currentColor" stroke-width="1"/><line x1="4" y1="7.5" x2="8" y2="7.5" stroke="currentColor" stroke-width="1"/></svg>
+            家計簿
+          </button>
+        </div>
       </div>
 
       <!-- ── Goal (目標) section ── -->
@@ -276,6 +330,23 @@
 
 </div><!-- /.layout -->
 
+<!-- ═══ STATUS BAR ═══ -->
+<div class="status-bar" id="js-status-bar">
+  <div class="status-bar-left">
+    <span class="status-item" id="js-status-view"></span>
+    <span class="status-sep">|</span>
+    <span class="status-item" id="js-status-date"></span>
+    <span class="status-sep">|</span>
+    <span class="status-item" id="js-status-events"></span>
+  </div>
+  <div class="status-bar-right">
+    <span class="status-item" id="js-status-sync"></span>
+    <span class="status-sep">|</span>
+    <span class="status-item">Karenda v1.0</span>
+  </div>
+</div>
+
+</div><!-- /.app-shell -->
 </div><!-- /#js-app -->
 
 
