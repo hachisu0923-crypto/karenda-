@@ -488,6 +488,20 @@ input  { font-family: inherit; }
   transition: background-color 0.2s, border-color 0.2s;
 }
 
+/* Hamburger toggle – hidden on desktop, shown on mobile via media query */
+.sidebar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sidebar-overlay { display: none; }
+
 .sidebar-section-label {
   font-size: 10px;
   font-weight: 700;
@@ -1960,8 +1974,29 @@ input  { font-family: inherit; }
 /* ── Mobile ─────────────────────────────────────────────── */
 @media (max-width: 720px) {
 
-  /* Hide sidebar; show a bottom nav instead */
-  .sidebar { display: none; }
+  /* Sidebar: slide-in drawer on mobile */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 260px;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1099;
+  }
+  .sidebar-overlay.is-visible {
+    display: block;
+  }
+  .sidebar-toggle { display: flex; }
 
   /* Layout: stack vertically, full width */
   .layout { flex-direction: column; overflow: hidden; }
@@ -2498,6 +2533,19 @@ input  { font-family: inherit; }
   flex-direction: column;
   overflow: hidden;
 }
+/* Desktop resize handle (top edge) */
+.bottom-panel::before {
+  content: '';
+  display: block;
+  height: 6px;
+  margin-top: -3px;
+  cursor: ns-resize;
+  flex-shrink: 0;
+}
+.bottom-panel.is-resizing {
+  transition: none;
+  user-select: none;
+}
 .bottom-panel.is-expanded {
   position: fixed;
   top: 0;
@@ -3019,6 +3067,7 @@ input  { font-family: inherit; }
 
 /* ── Mobile bottom panel ── */
 @media (max-width: 720px) {
+  .bottom-panel::before { display: none; }
   .bottom-panel { height: 180px; }
   .bp-swipe-handle { display: flex; }
   .bp-section { max-width: 100%; }

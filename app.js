@@ -599,6 +599,7 @@ async function showApp(user) {
   initBudgetPanel(user);
   initBottomPanelTabs();
   initBottomPanelSwipe();
+  initBottomPanelResize();
 
   await loadFromSupabase();
   // 祝日データをフェッチ（今年・来年）してから再描画
@@ -1820,6 +1821,20 @@ function renderAll(){
 applyTheme(isDark);
 // Auth state change will trigger showApp() → loadFromSupabase() → renderAll()
 
+// ── Mobile sidebar hamburger toggle ──────────────────────────────────────────
+(function initSidebarToggle() {
+  const btn = document.getElementById('js-sidebar-toggle');
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('js-sidebar-overlay');
+  if (!btn || !sidebar) return;
+
+  function open()  { sidebar.classList.add('is-open'); if (overlay) overlay.classList.add('is-visible'); }
+  function close() { sidebar.classList.remove('is-open'); if (overlay) overlay.classList.remove('is-visible'); }
+
+  btn.addEventListener('click', () => sidebar.classList.contains('is-open') ? close() : open());
+  if (overlay) overlay.addEventListener('click', close);
+})();
+
 // ── Sidebar section toggle (Blender-style collapsible panels) ────────────────
 document.querySelectorAll('.sidebar-section-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2453,6 +2468,41 @@ function initBottomPanelSwipe() {
       }
     }
   }, { passive: true });
+}
+
+/* ── Desktop: free-drag vertical resize ── */
+function initBottomPanelResize() {
+  const panel = document.querySelector('.bottom-panel');
+  if (!panel) return;
+
+  let dragging = false;
+  let startY = 0;
+  let startH = 0;
+  const MIN_H = 100;
+
+  panel.addEventListener('mousedown', e => {
+    const rect = panel.getBoundingClientRect();
+    if (e.clientY - rect.top > 6) return;
+    dragging = true;
+    startY = e.clientY;
+    startH = panel.offsetHeight;
+    panel.classList.add('is-resizing');
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const maxH = window.innerHeight * 0.8;
+    const dy = startY - e.clientY;
+    const newH = Math.min(maxH, Math.max(MIN_H, startH + dy));
+    panel.style.height = newH + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove('is-resizing');
+  });
 }
 
 
