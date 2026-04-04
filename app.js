@@ -1821,6 +1821,20 @@ function renderAll(){
 applyTheme(isDark);
 // Auth state change will trigger showApp() → loadFromSupabase() → renderAll()
 
+// ── Mobile sidebar hamburger toggle ──────────────────────────────────────────
+(function initSidebarToggle() {
+  const btn = document.getElementById('js-sidebar-toggle');
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('js-sidebar-overlay');
+  if (!btn || !sidebar) return;
+
+  function open()  { sidebar.classList.add('is-open'); if (overlay) overlay.classList.add('is-visible'); }
+  function close() { sidebar.classList.remove('is-open'); if (overlay) overlay.classList.remove('is-visible'); }
+
+  btn.addEventListener('click', () => sidebar.classList.contains('is-open') ? close() : open());
+  if (overlay) overlay.addEventListener('click', close);
+})();
+
 // ── Sidebar section toggle (Blender-style collapsible panels) ────────────────
 document.querySelectorAll('.sidebar-section-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
