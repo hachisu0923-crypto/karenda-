@@ -599,6 +599,7 @@ async function showApp(user) {
   initBudgetPanel(user);
   initBottomPanelTabs();
   initBottomPanelSwipe();
+  initBottomPanelResize();
 
   await loadFromSupabase();
   // 祝日データをフェッチ（今年・来年）してから再描画
@@ -2453,6 +2454,41 @@ function initBottomPanelSwipe() {
       }
     }
   }, { passive: true });
+}
+
+/* ── Desktop: free-drag vertical resize ── */
+function initBottomPanelResize() {
+  const panel = document.querySelector('.bottom-panel');
+  if (!panel) return;
+
+  let dragging = false;
+  let startY = 0;
+  let startH = 0;
+  const MIN_H = 100;
+
+  panel.addEventListener('mousedown', e => {
+    const rect = panel.getBoundingClientRect();
+    if (e.clientY - rect.top > 6) return;
+    dragging = true;
+    startY = e.clientY;
+    startH = panel.offsetHeight;
+    panel.classList.add('is-resizing');
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const maxH = window.innerHeight * 0.8;
+    const dy = startY - e.clientY;
+    const newH = Math.min(maxH, Math.max(MIN_H, startH + dy));
+    panel.style.height = newH + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove('is-resizing');
+  });
 }
 
 
