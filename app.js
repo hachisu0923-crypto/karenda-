@@ -851,8 +851,10 @@ function renderMini() {
   for (let i=first-1;i>=0;i--) grid.appendChild(mkMini(prev-i,true,false,false,false,false));
   for (let d=1;d<=dim;d++) {
     const dow=new Date(y,m,d).getDay();
+    const k=dateKey(y,m,d);
     const isTd=y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate();
-    const el=mkMini(d,false,isTd,!!(events[dateKey(y,m,d)]?.length),dow===0,dow===6);
+    const hasGoalDone=(typeof currentUser!=='undefined'&&currentUser)?_isGoalAchieved(currentUser.id,k):false;
+    const el=mkMini(d,false,isTd,!!(events[k]?.length),dow===0,dow===6,hasGoalDone);
     el.addEventListener('click',()=>openDayModal(y,m,d));
     grid.appendChild(el);
   }
@@ -860,10 +862,11 @@ function renderMini() {
   if (rem) for (let d=1;d<=7-rem;d++) grid.appendChild(mkMini(d,true,false,false,false,false));
 }
 
-function mkMini(day,isOther,isToday,hasEv,isSun,isSat) {
+function mkMini(day,isOther,isToday,hasEv,isSun,isSat,hasGoalDone) {
   const el=document.createElement('div');
   el.className=['mini-day',isOther?'is-other':'',isToday?'is-today':'',
-    hasEv?'has-events':'',isSun?'is-sun':'',isSat?'is-sat':''].filter(Boolean).join(' ');
+    hasEv?'has-events':'',isSun?'is-sun':'',isSat?'is-sat':'',
+    hasGoalDone?'has-goal-done':''].filter(Boolean).join(' ');
   el.textContent=day;
   return el;
 }
@@ -1006,6 +1009,15 @@ function buildCell(y,m,d,isOther,isToday) {
     }
   }
 
+
+  // 目標達成バッジ
+  if ((typeof currentUser!=='undefined'&&currentUser)&&_isGoalAchieved(currentUser.id,key)) {
+    cell.classList.add('has-goal-done');
+    const badge=document.createElement('span');
+    badge.className='goal-done-badge';
+    badge.title='目標達成';
+    numEl.appendChild(badge);
+  }
 
   cell.addEventListener('click',()=>{
     openDayModal(y,m,d);
@@ -2582,6 +2594,27 @@ function _persistGoal(userId, goals) {
   } catch(_) {}
 }
 
+// 指定日に全ての目標（テキストあり）が達成済みか判定
+function _isGoalAchieved(userId, dateStr) {
+  try {
+    const root = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY) || '{}');
+    const ug = root[userId] || {};
+    const tmpl = ug['_template'];
+    const ds = ug[dateStr];
+    if (!tmpl || !ds) return false;
+    const hasAny = tmpl.main.text || tmpl.subs.some(s => s.text);
+    if (!hasAny) return false;
+    if (tmpl.main.text && !ds.main?.done) return false;
+    for (const s of tmpl.subs) {
+      if (s.text) {
+        const st = ds.subs?.find(x => x.id === s.id);
+        if (!st?.done) return false;
+      }
+    }
+    return true;
+  } catch(_) { return false; }
+}
+
 function _dateAddDays(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
@@ -2611,30 +2644,75 @@ function initGoalPanel(userId) {
   let currentDate = _dateAddDays(_todayStr(), 1);
   const allGoals = _loadGoal(userId);
 
-  // データ構造: { main:{text,done}, subs:[{id,text,done,required}] }
-  // 旧形式（配列）からの移行も吸収する
-  function getData() {
-    const raw = allGoals[currentDate];
-    if (!raw || Array.isArray(raw)) {
-      allGoals[currentDate] = {
-        main: { text: '', done: false },
+  // ── 旧形式（日付ごとにテキスト+done）→ 新形式（テンプレート分離）への移行 ──
+  if (!allGoals['_template']) {
+    const dateKeys = Object.keys(allGoals)
+      .filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k))
+      .sort().reverse();
+    let src = null;
+    for (const k of dateKeys) {
+      const e = allGoals[k];
+      if (e && !Array.isArray(e) && (e.main?.text || e.subs?.some(s => s.text))) {
+        src = e; break;
+      }
+    }
+    if (src) {
+      allGoals['_template'] = {
+        main: { text: src.main?.text || '' },
+        subs: (src.subs || []).map(s => ({ id: s.id, text: s.text || '', required: !!s.required }))
+      };
+      for (const k of dateKeys) {
+        const e = allGoals[k];
+        if (e && !Array.isArray(e)) {
+          allGoals[k] = {
+            main: { done: !!e.main?.done },
+            subs: (e.subs || []).map(s => ({ id: s.id, done: !!s.done }))
+          };
+        }
+      }
+    } else {
+      allGoals['_template'] = {
+        main: { text: '' },
         subs: [
-          { id: 'sub-0', text: '', done: false, required: true },
-          { id: 'sub-1', text: '', done: false, required: true },
+          { id: 'sub-0', text: '', required: true },
+          { id: 'sub-1', text: '', required: true },
         ]
       };
     }
-    const data = allGoals[currentDate];
-    if (!data.subs) data.subs = [];
-    // required サブが2つ未満なら補完
-    const reqCount = data.subs.filter(s => s.required).length;
-    for (let i = reqCount; i < 2; i++) {
-      data.subs.splice(i, 0, { id: `sub-${i}`, text: '', done: false, required: true });
-    }
-    return data;
+    _persistGoal(userId, allGoals);
   }
 
-  function save() { _persistGoal(userId, allGoals); }
+  // テンプレートの required サブが2つ未満なら補完
+  const tmpl = allGoals['_template'];
+  if (!tmpl.subs) tmpl.subs = [];
+  const _reqCount = tmpl.subs.filter(s => s.required).length;
+  for (let i = _reqCount; i < 2; i++) {
+    tmpl.subs.splice(i, 0, { id: `sub-${i}`, text: '', required: true });
+  }
+
+  // テンプレートテキスト + 日付ごとの done 状態をマージして返す
+  function getData() {
+    if (!allGoals[currentDate] || Array.isArray(allGoals[currentDate])) {
+      allGoals[currentDate] = {
+        main: { done: false },
+        subs: tmpl.subs.map(s => ({ id: s.id, done: false }))
+      };
+    }
+    const ds = allGoals[currentDate];
+    if (!ds.subs) ds.subs = [];
+    for (const ts of tmpl.subs) {
+      if (!ds.subs.find(s => s.id === ts.id)) {
+        ds.subs.push({ id: ts.id, done: false });
+      }
+    }
+    return {
+      main: { text: tmpl.main.text, done: !!ds.main?.done },
+      subs: tmpl.subs.map(s => {
+        const st = ds.subs.find(x => x.id === s.id);
+        return { id: s.id, text: s.text, done: !!st?.done, required: s.required };
+      })
+    };
+  }
 
   const SVG_CHECK = '<svg viewBox="0 0 12 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -2666,29 +2744,45 @@ function initGoalPanel(userId) {
     if (!row) return;
     const id   = row.dataset.goalId;
     const type = row.dataset.goalType;
-    const data = getData();
 
-    // 削除（+α のみ）
+    // 削除（+α のみ）— テンプレートと全日付ステートから削除
     if (e.target.closest('.goal-del')) {
-      data.subs = data.subs.filter(s => s.id !== id);
-      save(); renderGoalList(); return;
-    }
-
-    // チェック切替
-    if (e.target.closest('.goal-check')) {
-      if (type === 'main') {
-        data.main.done = !data.main.done;
-      } else {
-        const item = data.subs.find(s => s.id === id);
-        if (item) item.done = !item.done;
+      tmpl.subs = tmpl.subs.filter(s => s.id !== id);
+      for (const k of Object.keys(allGoals)) {
+        if (k !== '_template' && allGoals[k]?.subs) {
+          allGoals[k].subs = allGoals[k].subs.filter(s => s.id !== id);
+        }
       }
-      save(); renderGoalList(); return;
+      _persistGoal(userId, allGoals); renderGoalList(); return;
     }
 
-    // テキストをクリックしてインライン編集
+    // チェック切替 — 日付ステートのみ更新
+    if (e.target.closest('.goal-check')) {
+      if (!allGoals[currentDate] || Array.isArray(allGoals[currentDate])) {
+        allGoals[currentDate] = { main: { done: false }, subs: tmpl.subs.map(s => ({ id: s.id, done: false })) };
+      }
+      const ds = allGoals[currentDate];
+      if (!ds.subs) ds.subs = [];
+      if (type === 'main') {
+        if (!ds.main) ds.main = {};
+        ds.main.done = !ds.main.done;
+      } else {
+        let subState = ds.subs.find(s => s.id === id);
+        if (!subState) { subState = { id, done: false }; ds.subs.push(subState); }
+        subState.done = !subState.done;
+      }
+      _persistGoal(userId, allGoals);
+      renderGoalList();
+      renderMini();
+      if (typeof currentView !== 'undefined' && currentView === 'month') renderMain();
+      return;
+    }
+
+    // テキストをクリックしてインライン編集 — テンプレートを更新
     if (e.target.closest('.goal-item-text')) {
+      const merged = getData();
       const textEl = e.target.closest('.goal-item-text');
-      const current = type === 'main' ? data.main.text : (data.subs.find(s => s.id === id)?.text || '');
+      const current = type === 'main' ? merged.main.text : (merged.subs.find(s => s.id === id)?.text || '');
       const inp = document.createElement('input');
       inp.type = 'text';
       inp.className = 'goal-inline-input';
@@ -2698,9 +2792,9 @@ function initGoalPanel(userId) {
       inp.focus(); inp.select();
       const commit = () => {
         const val = inp.value.trim();
-        if (type === 'main') { data.main.text = val; }
-        else { const item = data.subs.find(s => s.id === id); if (item) item.text = val; }
-        save(); renderGoalList();
+        if (type === 'main') { tmpl.main.text = val; }
+        else { const item = tmpl.subs.find(s => s.id === id); if (item) item.text = val; }
+        _persistGoal(userId, allGoals); renderGoalList();
       };
       inp.addEventListener('blur', commit);
       inp.addEventListener('keydown', ev => {
@@ -2710,15 +2804,26 @@ function initGoalPanel(userId) {
     }
   });
 
-  // +α 目標を追加
+  // +α 目標を追加 — テンプレートに追加
   formEl.addEventListener('submit', e => {
     e.preventDefault();
     const text = (inputEl.value || '').trim();
     if (!text) return;
-    const data = getData();
-    data.subs.push({ id: `g_${Date.now()}`, text, done: false, required: false });
+    tmpl.subs.push({ id: `g_${Date.now()}`, text, required: false });
     inputEl.value = '';
-    save(); renderGoalList();
+    _persistGoal(userId, allGoals); renderGoalList();
+  });
+
+  // チェックをリセット（テキストは保持）
+  document.getElementById('js-goal-reset')?.addEventListener('click', () => {
+    if (!allGoals[currentDate]) return;
+    const ds = allGoals[currentDate];
+    if (ds.main) ds.main.done = false;
+    (ds.subs || []).forEach(s => { s.done = false; });
+    _persistGoal(userId, allGoals);
+    renderGoalList();
+    renderMini();
+    if (typeof currentView !== 'undefined' && currentView === 'month') renderMain();
   });
 
   prevBtn.addEventListener('click',  () => { currentDate = _dateAddDays(currentDate, -1); renderGoalList(); });

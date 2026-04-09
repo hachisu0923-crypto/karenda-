@@ -607,6 +607,16 @@ input  { font-family: inherit; }
 }
 .mini-day.is-today.has-events::after { background-color: rgba(255,255,255,0.6); }
 
+.mini-day.has-goal-done::before {
+  content: '';
+  position: absolute;
+  top: 2px; right: 3px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #f5a623;
+}
+.mini-day.is-today.has-goal-done::before { background: rgba(255,255,255,0.9); }
+
 /* ============================================================
    CATEGORY LIST (sidebar)
    ============================================================ */
@@ -905,6 +915,16 @@ input  { font-family: inherit; }
 .day-cell.is-other-month          { background-color: var(--color-bg-cell-alt); opacity: 0.6; }
 .day-cell.is-other-month .day-num { color: var(--color-text-disabled); }
 .day-cell.is-today                { background-color: var(--color-bg-today); }
+
+.goal-done-badge {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #f5a623;
+  margin-left: 3px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
 
 .day-num {
   width: 22px; height: 22px;
@@ -2791,6 +2811,17 @@ input  { font-family: inherit; }
   flex-shrink: 0;
 }
 .goal-today-btn:hover { background: var(--color-bg-hover); color: var(--color-text); }
+.goal-reset-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+.goal-reset-btn:hover { background: var(--color-bg-hover); color: var(--color-text); }
 .goal-list { margin-bottom: 8px; }
 .goal-empty {
   font-size: 13px;
