@@ -798,7 +798,6 @@ function renderSalarySummary() {
   const today   = new Date();
   const isCurrentMonth = curDate.getFullYear()===today.getFullYear() &&
                          curDate.getMonth()===today.getMonth();
-  const summaryToDate  = isCurrentMonth ? monthlySalaryToDate() : null;
   box.innerHTML = '';
 
   const active = shiftCats().filter(c => summary[c.id]);
@@ -807,7 +806,7 @@ function renderSalarySummary() {
     return;
   }
 
-  let total = 0, totalToDate = 0;
+  let total = 0;
   active.forEach(cat => {
     const { workMinutes, pay } = summary[cat.id];
     total += pay;
@@ -821,16 +820,15 @@ function renderSalarySummary() {
     box.appendChild(row);
   });
 
-  if (isCurrentMonth && summaryToDate) {
-    Object.values(summaryToDate).forEach(v => { totalToDate += v.pay; });
-  }
-
-  if (active.length > 1) box.insertAdjacentHTML('beforeend','<div class="salary-divider"></div>');
+  box.insertAdjacentHTML('beforeend','<div class="salary-divider"></div>');
 
   if (isCurrentMonth) {
+    const toDateSummary = monthlySalaryToDate();
+    let totalToDate = 0;
+    Object.values(toDateSummary).forEach(v => { totalToDate += v.pay; });
+
     const todayRow = document.createElement('div');
     todayRow.className = 'salary-today-row';
-    todayRow.style.marginTop = '4px';
     todayRow.innerHTML = `<span class="salary-today-label">今日まで</span>
                           <span class="salary-today-amount">${fmtYen(totalToDate)}</span>`;
     box.appendChild(todayRow);
@@ -838,8 +836,8 @@ function renderSalarySummary() {
 
   const tot = document.createElement('div');
   tot.className = 'salary-total-row';
-  tot.style.marginTop = isCurrentMonth ? '3px' : '4px';
-  tot.innerHTML = `<span class="salary-total-label">今月</span>
+  tot.style.marginTop = '3px';
+  tot.innerHTML = `<span class="salary-total-label">${isCurrentMonth ? '今月' : '合計'}</span>
                    <span class="salary-total-amount">${fmtYen(total)}</span>`;
   box.appendChild(tot);
 }
