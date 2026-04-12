@@ -176,7 +176,40 @@ function catCounts() {
 
 // ── Push Notification ─────────────────────────────────────────────────────────
 
-// 通知済みキーをlocalStorageで管理（当日分のみ保持）
+// VAPID public key（Edge Function の VAPID_PUBLIC_KEY と一致させること）
+const VAPID_PUBLIC_KEY = 'BNbaJJlWNEwlkbRPPJjgU_NAtj-hUc_d8qksT3aoSlsBaxuCDwnMYYgeM0gzVcd6Qqd-J2xGJ4DzPX4FjCsrcug';
+
+function _urlBase64ToUint8Array(base64String) {
+  const pad = '='.repeat((4 - base64String.length % 4) % 4);
+  const b64 = (base64String + pad).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+/** サーバー Push 購読を取得・保存する */
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!currentUser || !db) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const j = sub.toJSON();
+    await db.from('push_subscriptions').upsert({
+      user_id:  currentUser.id,
+      endpoint: j.endpoint,
+      p256dh:   j.keys.p256dh,
+      auth:     j.keys.auth
+    }, { onConflict: 'user_id,endpoint' });
+  } catch (e) {
+    console.warn('Push subscription failed:', e);
+  }
+}
+
 const NOTIF_STORAGE_KEY = 'notified_keys_v1';
 
 function _getNotifiedKeys() {
@@ -232,18 +265,20 @@ async function requestNotificationPermission() {
   return result === 'granted';
 }
 
-// ログイン後に呼ぶ：通知許可を求めてから当日分チェック
+// ログイン後に呼ぶ：通知許可を求め、Push 購読登録し、当日分チェック
 async function initNotifications() {
   if (!('Notification' in window)) return;
-  await requestNotificationPermission();
+  const granted = await requestNotificationPermission();
   checkAndSendNotifications();
+
+  // アプリを開いていないときも通知が届くよう Web Push 購読を登録
+  if (granted) subscribeToPush();
 
   // 次の00:00に再チェックをスケジュール
   const now = new Date();
   const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1).getTime() - now.getTime();
   setTimeout(() => {
     checkAndSendNotifications();
-    // 以降は24時間ごと
     setInterval(checkAndSendNotifications, 86400000);
   }, msUntilMidnight);
 }
