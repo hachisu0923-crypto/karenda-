@@ -368,13 +368,13 @@
 
 <!-- ═══════════ DAY MODAL ═══════════ -->
 <div class="overlay" id="js-day-overlay">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="js-day-modal-title">
     <div class="modal-header">
       <div>
         <div class="modal-header-title" id="js-day-modal-title"></div>
         <div class="modal-header-sub"   id="js-day-modal-sub"></div>
       </div>
-      <button class="modal-close-btn" id="js-day-modal-close">✕</button>
+      <button class="modal-close-btn" id="js-day-modal-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
       <div id="js-existing-events"></div>
@@ -458,13 +458,13 @@
 
 <!-- ═══════════ EDIT EVENT MODAL ═══════════ -->
 <div class="overlay" id="js-edit-overlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-edit-modal-title">
     <div class="modal-header">
       <div>
         <div class="modal-header-title" id="js-edit-modal-title">予定を編集</div>
         <div class="modal-header-sub"   id="js-edit-modal-sub"></div>
       </div>
-      <button class="modal-close-btn" id="js-edit-modal-close">✕</button>
+      <button class="modal-close-btn" id="js-edit-modal-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
 
@@ -533,13 +533,13 @@
 
 <!-- ═══════════ CATEGORY EDITOR MODAL ═══════════ -->
 <div class="overlay" id="js-cat-overlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-cat-modal-title">
     <div class="modal-header">
       <div>
-        <div class="modal-header-title">カテゴリの管理</div>
+        <div class="modal-header-title" id="js-cat-modal-title">カテゴリの管理</div>
         <div class="modal-header-sub">バイトにはシフトテンプレートと時給を設定できます</div>
       </div>
-      <button class="modal-close-btn" id="js-cat-modal-close">✕</button>
+      <button class="modal-close-btn" id="js-cat-modal-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
       <div id="js-cat-editor-list"></div>
@@ -567,13 +567,13 @@
 
 <!-- ═══════════ BUDGET CATEGORY EDITOR MODAL ═══════════ -->
 <div class="overlay" id="js-budget-cat-overlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-budget-cat-modal-title">
     <div class="modal-header">
       <div>
-        <div class="modal-header-title">家計簿カテゴリの管理</div>
+        <div class="modal-header-title" id="js-budget-cat-modal-title">家計簿カテゴリの管理</div>
         <div class="modal-header-sub">支出・収入のカテゴリを自由に編集できます</div>
       </div>
-      <button class="modal-close-btn" id="js-budget-cat-modal-close">✕</button>
+      <button class="modal-close-btn" id="js-budget-cat-modal-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
       <div class="budget-cat-tab-bar">
@@ -595,13 +595,13 @@
 
 <!-- ═══════════ RECEIPT SCAN MODAL ═══════════ -->
 <div class="overlay" id="js-receipt-overlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-receipt-modal-title">
     <div class="modal-header">
       <div>
-        <div class="modal-header-title">📷 レシート読取</div>
+        <div class="modal-header-title" id="js-receipt-modal-title">📷 レシート読取</div>
         <div class="modal-header-sub">レシートを撮影・選択して支出を自動入力</div>
       </div>
-      <button class="modal-close-btn" id="js-receipt-modal-close">✕</button>
+      <button class="modal-close-btn" id="js-receipt-modal-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
       <!-- Step 1: Upload -->
@@ -654,13 +654,13 @@
 
 <!-- ═══════════ API KEY MODAL ═══════════ -->
 <div class="overlay" id="js-apikey-overlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-apikey-modal-title">
     <div class="modal-header">
       <div>
-        <div class="modal-header-title">⚙ Anthropic API Key 設定</div>
+        <div class="modal-header-title" id="js-apikey-modal-title">⚙ Anthropic API Key 設定</div>
         <div class="modal-header-sub">レシート解析にAnthropicのAPIキーが必要です</div>
       </div>
-      <button class="modal-close-btn" id="js-apikey-modal-close">✕</button>
+      <button class="modal-close-btn" id="js-apikey-modal-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-row">
@@ -683,13 +683,13 @@
 
 <!-- ═══════════ DAILY PLAN MODAL ═══════════ -->
 <div class="overlay" id="js-daily-plan-overlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-daily-plan-modal-title">
     <div class="modal-header">
       <div>
-        <div class="modal-header-title">📋 明日のタスクを計画</div>
+        <div class="modal-header-title" id="js-daily-plan-modal-title">📋 明日のタスクを計画</div>
         <div class="modal-header-sub" id="js-daily-plan-date-label"></div>
       </div>
-      <button class="modal-close-btn" id="js-daily-plan-close">✕</button>
+      <button class="modal-close-btn" id="js-daily-plan-close" aria-label="閉じる">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-row">

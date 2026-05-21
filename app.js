@@ -143,7 +143,10 @@ function dateKey(y, m, d) {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
-function getCat(id)   { return categories.find(c => c.id === id); }
+let _catMap = new Map();
+function rebuildCatMap() { _catMap = new Map(categories.map(c => [c.id, c])); }
+
+function getCat(id)   { return _catMap.get(id); }
 function normalCats() { return categories.filter(c => c.type !== 'shift'); }
 function shiftCats()  { return categories.filter(c => c.type === 'shift'); }
 function isShift(id)  { return getCat(id)?.type === 'shift'; }
@@ -411,9 +414,11 @@ async function loadFromSupabase() {
         hourlyWage:  r.hourly_wage ?? undefined,
         templates:   r.templates ?? []
       }));
+      rebuildCatMap();
     } else {
       // First login: seed defaults
       categories = deepClone(DEFAULT_CATEGORIES);
+      rebuildCatMap();
       await saveCategoriesToSupabase();
     }
 
@@ -806,7 +811,7 @@ document.getElementById('js-auth-google').addEventListener('click', async () => 
 document.getElementById('js-logout').addEventListener('click', async () => {
   if(!ensureDb()) return;
   await db.auth.signOut();
-  currentUser = null; categories = []; events = {};
+  currentUser = null; categories = []; events = {}; rebuildCatMap();
   showAuthScreen();
 });
 
@@ -1326,6 +1331,20 @@ function openEditModal(ev) {
   }, 80);
 }
 
+// Update visual selection state of chips without re-rendering the entire list.
+function applyChipSelection(listEl, selectedId) {
+  listEl.querySelectorAll('.cat-chip').forEach(el => {
+    const id  = el.dataset.catId;
+    const cat = getCat(id);
+    if (!cat) return;
+    const isSel = id === String(selectedId);
+    el.classList.toggle('is-selected', isSel);
+    el.style.background = isSel ? cat.color : '';
+    const dot = el.querySelector('.cat-chip-dot');
+    if (dot) dot.style.background = isSel ? 'rgba(255,255,255,.7)' : cat.color;
+  });
+}
+
 function renderEditCatChips() {
   const list = document.getElementById('js-edit-cat-chip-list');
   list.innerHTML = '';
@@ -1333,9 +1352,13 @@ function renderEditCatChips() {
     const sel = cat.id === editingCatId;
     const chip = document.createElement('div');
     chip.className = 'cat-chip' + (sel ? ' is-selected' : '');
+    chip.dataset.catId = cat.id;
     if (sel) chip.style.background = cat.color;
     chip.innerHTML = `<span class="cat-chip-dot" style="background:${sel?'rgba(255,255,255,.7)':cat.color}"></span>${escHtml(cat.name)}`;
-    chip.addEventListener('click', () => { editingCatId = cat.id; renderEditCatChips(); });
+    chip.addEventListener('click', () => {
+      editingCatId = cat.id;
+      applyChipSelection(list, editingCatId);
+    });
     list.appendChild(chip);
   });
 }
@@ -1409,9 +1432,13 @@ function renderCatChips() {
     const sel=cat.id===selectedCatId;
     const chip=document.createElement('div');
     chip.className='cat-chip'+(sel?' is-selected':'');
+    chip.dataset.catId=cat.id;
     if (sel) chip.style.background=cat.color;
     chip.innerHTML=`<span class="cat-chip-dot" style="background:${sel?'rgba(255,255,255,.7)':cat.color}"></span>${escHtml(cat.name)}`;
-    chip.addEventListener('click',()=>{selectedCatId=cat.id;renderCatChips();});
+    chip.addEventListener('click',()=>{
+      selectedCatId=cat.id;
+      applyChipSelection(list, selectedCatId);
+    });
     list.appendChild(chip);
   });
 }
@@ -1621,14 +1648,17 @@ document.getElementById('js-add-cat-row').addEventListener('click',()=>{
 
 document.getElementById('js-cat-save-btn').addEventListener('click',async()=>{
   categories=editingCats.filter(c=>c.name.trim());
+  rebuildCatMap();
   const valid=new Set(categories.map(c=>c.id));
-  // Remove events with deleted cat ids (from Supabase too)
+  // Remove events with deleted cat ids (from Supabase too) — parallelized
+  const allToDelete=[];
   for (const key of Object.keys(events)) {
     const toDelete=events[key].filter(ev=>!valid.has(ev.catId));
-    for (const ev of toDelete) await deleteEventFromSupabase(ev);
+    allToDelete.push(...toDelete);
     events[key]=events[key].filter(ev=>valid.has(ev.catId));
     if (!events[key].length) delete events[key];
   }
+  await Promise.all(allToDelete.map(ev=>deleteEventFromSupabase(ev)));
   if (!getCat(selectedCatId)) selectedCatId=normalCats()[0]?.id??categories[0]?.id;
   await saveCategoriesToSupabase();
   closeOverlay('js-cat-overlay');
@@ -1691,8 +1721,31 @@ document.addEventListener('click',e=>{
 
 // ── Overlay helpers ───────────────────────────────────────────────────────────
 
-function openOverlay(id){document.getElementById(id).classList.add('is-open');}
-function closeOverlay(id){document.getElementById(id).classList.remove('is-open');}
+// Stack of focus-return targets, one per currently-open overlay.
+const _overlayFocusStack = [];
+const FOCUSABLE_SEL = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function _getTopOpenOverlay() {
+  const overlays = document.querySelectorAll('.overlay.is-open');
+  return overlays.length ? overlays[overlays.length - 1] : null;
+}
+
+function openOverlay(id){
+  const el = document.getElementById(id);
+  if (!el || el.classList.contains('is-open')) return;
+  _overlayFocusStack.push(document.activeElement);
+  el.classList.add('is-open');
+}
+
+function closeOverlay(id){
+  const el = document.getElementById(id);
+  if (!el || !el.classList.contains('is-open')) return;
+  el.classList.remove('is-open');
+  const prev = _overlayFocusStack.pop();
+  if (prev && typeof prev.focus === 'function') {
+    try { prev.focus(); } catch (_) { /* element may be detached */ }
+  }
+}
 
 document.getElementById('js-day-modal-close').addEventListener('click',()=>{
   closeOverlay('js-edit-overlay');
@@ -1836,6 +1889,27 @@ document.addEventListener('keydown',e=>{
   if (e.key==='Escape'){
     closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');
     if (document.activeElement) document.activeElement.blur();
+    return;
+  }
+  // Tab focus trap inside the topmost open modal
+  if (e.key === 'Tab') {
+    const overlay = _getTopOpenOverlay();
+    if (overlay) {
+      const focusables = Array.from(overlay.querySelectorAll(FOCUSABLE_SEL))
+        .filter(el => el.offsetParent !== null);
+      if (focusables.length) {
+        const first = focusables[0];
+        const last  = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault(); first.focus();
+        } else if (!overlay.contains(active)) {
+          e.preventDefault(); first.focus();
+        }
+      }
+    }
     return;
   }
   if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
