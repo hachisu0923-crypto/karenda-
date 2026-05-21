@@ -501,6 +501,7 @@ input  { font-family: inherit; }
   flex-shrink: 0;
 }
 .sidebar-overlay { display: none; }
+.edge-swipe-hint { display: none; }
 
 .sidebar-section-label {
   font-size: 10px;
@@ -2086,6 +2087,28 @@ input  { font-family: inherit; }
     display: block;
   }
   .sidebar-toggle { display: flex; }
+
+  /* Edge swipe hint: a thin vertical indicator at the left screen edge,
+     visible only while the sidebar is closed. Tells users they can swipe. */
+  .edge-swipe-hint {
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 56px;
+    border-radius: 0 3px 3px 0;
+    background: var(--color-accent, #4772b3);
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 1098;
+    transition: opacity 0.2s ease;
+  }
+  .sidebar.is-open ~ .edge-swipe-hint,
+  .edge-swipe-hint.is-hidden {
+    opacity: 0;
+  }
 
   /* Layout: stack vertically, full width */
   .layout { flex-direction: column; overflow: hidden; }

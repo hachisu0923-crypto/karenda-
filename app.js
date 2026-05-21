@@ -1766,11 +1766,12 @@ document.getElementById('js-next-month').addEventListener('click',()=>{curDate.s
 // ── Swipe navigation (month view) ──────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-month-view');
+  const EDGE_ZONE = 22; // left-edge zone reserved for sidebar swipe
   let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    tracking = true;
+    tracking = startX > EDGE_ZONE; // skip if starting from the sidebar edge zone
     swiped = false;
   }, { passive: true });
   el.addEventListener('touchmove', e => {
@@ -1983,11 +1984,52 @@ applyTheme(isDark);
   const overlay = document.getElementById('js-sidebar-overlay');
   if (!btn || !sidebar) return;
 
-  function open()  { sidebar.classList.add('is-open'); if (overlay) overlay.classList.add('is-visible'); }
-  function close() { sidebar.classList.remove('is-open'); if (overlay) overlay.classList.remove('is-visible'); }
+  function open()  {
+    sidebar.classList.add('is-open');
+    if (overlay) overlay.classList.add('is-visible');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  function close() {
+    sidebar.classList.remove('is-open');
+    if (overlay) overlay.classList.remove('is-visible');
+    btn.setAttribute('aria-expanded', 'false');
+  }
 
+  btn.setAttribute('aria-expanded', 'false');
   btn.addEventListener('click', () => sidebar.classList.contains('is-open') ? close() : open());
   if (overlay) overlay.addEventListener('click', close);
+
+  // Edge swipe: open from left edge, close by swiping left on sidebar (mobile only)
+  const EDGE_ZONE = 22;          // pixels from left edge that can start the swipe
+  const SWIPE_THRESHOLD = 50;    // horizontal distance needed
+  const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
+
+  let startX = 0, startY = 0, tracking = false, fromEdge = false, fromSidebar = false;
+
+  document.addEventListener('touchstart', e => {
+    if (!isMobile()) return;
+    const t = e.touches[0];
+    const sidebarOpen = sidebar.classList.contains('is-open');
+    fromEdge = !sidebarOpen && t.clientX <= EDGE_ZONE;
+    fromSidebar = sidebarOpen && sidebar.contains(e.target);
+    if (!fromEdge && !fromSidebar) { tracking = false; return; }
+    startX = t.clientX;
+    startY = t.clientY;
+    tracking = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!tracking) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+    tracking = false;
+    if (fromEdge && dx > 0) open();
+    else if (fromSidebar && dx < 0) close();
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
 // ── Sidebar section toggle (Blender-style collapsible panels) ────────────────
@@ -2055,11 +2097,12 @@ document.getElementById('js-dv-add').addEventListener('click', () => {
 // ── Swipe navigation (day view) ───────────────────────────────────────────────
 (function() {
   const el = document.getElementById('js-day-view');
+  const EDGE_ZONE = 22; // left-edge zone reserved for sidebar swipe
   let startX = 0, startY = 0, tracking = false, swiped = false;
   el.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    tracking = true;
+    tracking = startX > EDGE_ZONE; // skip if starting from the sidebar edge zone
     swiped = false;
   }, { passive: true });
   el.addEventListener('touchmove', e => {
