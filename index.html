@@ -430,9 +430,15 @@
             <input class="form-input" type="time" id="js-shift-end" />
           </div>
         </div>
-        <div class="form-row">
-          <label class="form-label" for="js-shift-break">休憩時間（分）</label>
-          <input class="form-input" type="number" id="js-shift-break" placeholder="0" min="0" max="480" />
+        <div class="form-row form-row-2col">
+          <div>
+            <label class="form-label" for="js-shift-break">休憩時間（分）</label>
+            <input class="form-input" type="number" id="js-shift-break" placeholder="0" min="0" max="480" />
+          </div>
+          <div>
+            <label class="form-label" for="js-shift-overtime">残業時間</label>
+            <input class="form-input" type="time" id="js-shift-overtime" value="00:00" />
+          </div>
         </div>
         <div class="wage-preview" id="js-wage-preview">
           <div class="wage-preview-row">
@@ -442,6 +448,10 @@
           <div class="wage-preview-row">
             <span class="wage-preview-label">休憩（控除）</span>
             <span class="wage-preview-val" id="js-preview-break">—</span>
+          </div>
+          <div class="wage-preview-row">
+            <span class="wage-preview-label">残業（バンクへ）</span>
+            <span class="wage-preview-val" id="js-preview-overtime">—</span>
           </div>
           <div class="wage-preview-divider"></div>
           <div class="wage-preview-row">
@@ -505,9 +515,15 @@
             <input class="form-input" type="time" id="js-edit-shift-end" />
           </div>
         </div>
-        <div class="form-row">
-          <label class="form-label" for="js-edit-shift-break">休憩時間（分）</label>
-          <input class="form-input" type="number" id="js-edit-shift-break" placeholder="0" min="0" max="480" />
+        <div class="form-row form-row-2col">
+          <div>
+            <label class="form-label" for="js-edit-shift-break">休憩時間（分）</label>
+            <input class="form-input" type="number" id="js-edit-shift-break" placeholder="0" min="0" max="480" />
+          </div>
+          <div>
+            <label class="form-label" for="js-edit-shift-overtime">残業時間</label>
+            <input class="form-input" type="time" id="js-edit-shift-overtime" value="00:00" />
+          </div>
         </div>
         <div class="wage-preview" id="js-edit-wage-preview">
           <div class="wage-preview-row">
@@ -517,6 +533,10 @@
           <div class="wage-preview-row">
             <span class="wage-preview-label">休憩（控除）</span>
             <span class="wage-preview-val" id="js-edit-preview-break">—</span>
+          </div>
+          <div class="wage-preview-row">
+            <span class="wage-preview-label">残業（バンクへ）</span>
+            <span class="wage-preview-val" id="js-edit-preview-overtime">—</span>
           </div>
           <div class="wage-preview-divider"></div>
           <div class="wage-preview-row">
@@ -680,6 +700,65 @@
     <div class="modal-footer">
       <button class="btn-secondary" id="js-apikey-cancel">キャンセル</button>
       <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-apikey-save">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ OVERTIME CASHOUT MODAL ═══════════ -->
+<div class="overlay" id="js-overtime-cashout-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-overtime-cashout-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-overtime-cashout-title">⏱ 残業を給料に含める</div>
+        <div class="modal-header-sub">バンクに溜まった残業時間を今月の給料に計上します</div>
+      </div>
+      <button class="modal-close-btn" id="js-overtime-cashout-close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">バイトカテゴリ</label>
+        <div class="cat-chip-list" id="js-overtime-cashout-cat-list"></div>
+      </div>
+      <div class="form-row form-row-2col">
+        <div>
+          <label class="form-label" for="js-overtime-cashout-time">使う時間</label>
+          <input class="form-input" type="time" id="js-overtime-cashout-time" value="00:00" />
+        </div>
+        <div>
+          <label class="form-label">バンク残高</label>
+          <div class="overtime-bank-balance" id="js-overtime-cashout-balance">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="js-overtime-cashout-note">メモ（任意）</label>
+        <input class="form-input" type="text" id="js-overtime-cashout-note" placeholder="例: 2026年5月分振替" maxlength="80" autocomplete="off" />
+      </div>
+      <div class="overtime-cashout-preview" id="js-overtime-cashout-preview">
+        <span>給料加算額</span>
+        <span class="overtime-cashout-preview-amount" id="js-overtime-cashout-preview-amount">—</span>
+      </div>
+      <div class="overtime-cashout-warning" id="js-overtime-cashout-warning" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="js-overtime-cashout-cancel">キャンセル</button>
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-overtime-cashout-confirm">使う</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ OVERTIME HISTORY MODAL ═══════════ -->
+<div class="overlay" id="js-overtime-history-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="js-overtime-history-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-overtime-history-title">📊 残業の履歴</div>
+        <div class="modal-header-sub">月別の残業時間と、給料に振替えた履歴を確認できます</div>
+      </div>
+      <button class="modal-close-btn" id="js-overtime-history-close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="overtime-history-tabs" id="js-overtime-history-tabs"></div>
+      <div class="overtime-history-content" id="js-overtime-history-content"></div>
     </div>
   </div>
 </div>
