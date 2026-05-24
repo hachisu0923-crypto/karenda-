@@ -382,6 +382,12 @@
     <div class="modal-body">
       <div id="js-existing-events"></div>
 
+      <div class="form-row drink-counter-row">
+        <label class="form-label" for="js-day-drink-count">🍺 飲んだ数</label>
+        <input class="form-input drink-counter-input" type="number" id="js-day-drink-count"
+               min="0" max="99" step="1" value="0" inputmode="numeric" />
+      </div>
+
       <div class="form-tab-bar">
         <button class="form-tab is-active" data-tab="event">予定を追加</button>
         <button class="form-tab" data-tab="shift" id="js-shift-tab">シフトを追加</button>
