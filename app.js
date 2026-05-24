@@ -102,6 +102,7 @@ const DEFAULT_CATEGORIES = [
 let categories     = [];
 let events         = {};          // { dateKey: [ eventObj, … ] }
 let overtimeCashouts = [];        // [{ id, catId, minutes, note, dateKey, createdAt }]
+let dailyDrinks      = {};        // { dateKey: count }
 let curDate        = new Date();
 let selectedKey    = null;
 let selectedCatId  = null;
@@ -499,6 +500,7 @@ async function loadFromSupabase() {
 
     selectedCatId = normalCats()[0]?.id ?? categories[0]?.id;
     await loadOvertimeCashoutsFromSupabase();
+    await loadDailyDrinksFromSupabase();
     setSyncStatus('synced');
   } catch (e) {
     console.error('Load error:', e);
@@ -716,6 +718,58 @@ async function deleteOvertimeCashoutFromSupabase(c) {
   } catch (e) {
     console.error('Delete cashout error:', e);
     setSyncStatus('error');
+  }
+}
+
+// ── Supabase: daily drinks ────────────────────────────────────────────────────
+
+async function loadDailyDrinksFromSupabase() {
+  if (!currentUser) return;
+  try {
+    const { data, error } = await db
+      .from('daily_drinks')
+      .select('date_key, count')
+      .eq('user_id', currentUser.id);
+    if (error) {
+      if (error.code === '42P01' || /relation .* does not exist/i.test(error.message || '')) {
+        console.warn('daily_drinks テーブルが未作成です。マイグレーションを実行してください。');
+        dailyDrinks = {};
+        return;
+      }
+      throw error;
+    }
+    dailyDrinks = {};
+    (data || []).forEach(r => {
+      if (r.count > 0) dailyDrinks[r.date_key] = r.count;
+    });
+  } catch (e) {
+    console.error('Load drinks error:', e);
+    dailyDrinks = {};
+  }
+}
+
+async function setDrinkCount(key, count) {
+  if (!currentUser) return;
+  setSyncStatus('syncing');
+  try {
+    if (count > 0) {
+      const { error } = await db.from('daily_drinks').upsert(
+        { user_id: currentUser.id, date_key: key, count, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,date_key' }
+      );
+      if (error) throw error;
+    } else {
+      const { error } = await db.from('daily_drinks')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('date_key', key);
+      if (error) throw error;
+    }
+    setSyncStatus('synced');
+  } catch (e) {
+    console.error('Save drink count error:', e);
+    setSyncStatus('error');
+    alert('飲酒数の保存に失敗しました。\n' + (e.message || JSON.stringify(e)));
   }
 }
 
@@ -988,7 +1042,7 @@ document.getElementById('js-auth-google').addEventListener('click', async () => 
 document.getElementById('js-logout').addEventListener('click', async () => {
   if(!ensureDb()) return;
   await db.auth.signOut();
-  currentUser = null; categories = []; events = {}; overtimeCashouts = []; rebuildCatMap();
+  currentUser = null; categories = []; events = {}; overtimeCashouts = []; dailyDrinks = {}; rebuildCatMap();
   showAuthScreen();
 });
 
@@ -1196,6 +1250,13 @@ function buildCell(y,m,d,isOther,isToday) {
   numEl.className='day-num'; numEl.textContent=d;
   cell.appendChild(numEl);
 
+  // 飲酒カウンター（セル右上に絶対配置、0も含めて常に表示、0は薄色）
+  const drinkCount = dailyDrinks[key] ?? 0;
+  const drinkEl = document.createElement('div');
+  drinkEl.className = 'day-drink-count' + (drinkCount === 0 ? ' is-zero' : '');
+  drinkEl.textContent = `🍺${drinkCount}`;
+  cell.appendChild(drinkEl);
+
   const _hName = getHolidayName(key);
   if (_hName) {
     const hEl = document.createElement('div');
@@ -1309,6 +1370,8 @@ function openDayModal(y,m,d) {
   const dow=new Date(y,m,d).getDay();
   document.getElementById('js-day-modal-title').textContent=`${MONTHS_INIT[m]} ${d}, ${y}`;
   document.getElementById('js-day-modal-sub').textContent=DAYS_EN[dow];
+
+  document.getElementById('js-day-drink-count').value = dailyDrinks[selectedKey] ?? 0;
 
   document.getElementById('js-ev-title').value='';
   document.getElementById('js-ev-time-start').value='';
@@ -1664,6 +1727,17 @@ function renderCatChips() {
 
 document.getElementById('js-add-event-btn').addEventListener('click',addEvent);
 document.getElementById('js-ev-title').addEventListener('keydown',e=>{if(e.key==='Enter')addEvent();});
+
+// 飲酒カウンター: changeイベントでSupabaseに保存
+document.getElementById('js-day-drink-count').addEventListener('change', async e => {
+  const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0));
+  e.target.value = v;
+  if (!selectedKey) return;
+  if (v === 0) delete dailyDrinks[selectedKey];
+  else         dailyDrinks[selectedKey] = v;
+  await setDrinkCount(selectedKey, v);
+  renderAll();
+});
 
 async function addEvent() {
   const title=document.getElementById('js-ev-title').value.trim();

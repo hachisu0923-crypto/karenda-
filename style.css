@@ -1076,6 +1076,7 @@ input  { font-family: inherit; }
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  position: relative;
   border-right: 1px solid var(--color-wire);
   border-bottom: 1px solid var(--color-wire);
   padding: 4px 5px;
@@ -1084,6 +1085,27 @@ input  { font-family: inherit; }
   flex-direction: column;
   box-sizing: border-box;
   transition: background-color 0.08s;
+}
+
+/* Daily drink counter: top-right of each calendar cell */
+.day-drink-count {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-accent-orange);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+}
+.day-drink-count.is-zero {
+  opacity: 0.22;
+  font-weight: 400;
+}
+@media (max-width: 720px) {
+  .day-drink-count { font-size: 9px; top: 3px; right: 3px; }
 }
 .day-cell:hover                   { background-color: rgba(71,114,179,0.08); }
 .day-cell:nth-child(7n)           { border-right: none; }
@@ -1455,6 +1477,24 @@ input  { font-family: inherit; }
 .add-section { padding-top: 14px; }
 
 .form-row { margin-bottom: 10px; }
+
+/* Daily drink counter row in the day modal */
+.drink-counter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius-md);
+}
+.drink-counter-row .form-label { margin: 0; flex: 1; font-size: 12px; }
+.drink-counter-input {
+  width: 70px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
 .form-row-2col {
   display: grid;
