@@ -101,6 +101,7 @@ const DEFAULT_CATEGORIES = [
 
 let categories     = [];
 let events         = {};          // { dateKey: [ eventObj, … ] }
+let overtimeCashouts = [];        // [{ id, catId, minutes, note, dateKey, createdAt }]
 let curDate        = new Date();
 let selectedKey    = null;
 let selectedCatId  = null;
@@ -340,6 +341,22 @@ function calcShift(ev) {
   return { totalMinutes:total, breakMinutes:brk, workMinutes:work, pay:Math.floor(work/60*wage) };
 }
 
+// "HH:MM" → 分。空・不正なら0。
+function parseHHMMtoMin(str) {
+  if (!str || typeof str !== 'string') return 0;
+  const m = str.match(/^(\d{1,3}):(\d{1,2})$/);
+  if (!m) return 0;
+  const h = parseInt(m[1], 10), mi = parseInt(m[2], 10);
+  if (isNaN(h) || isNaN(mi) || mi >= 60) return 0;
+  return h * 60 + mi;
+}
+
+// 分 → "HH:MM"
+function formatMinToHHMM(mins) {
+  const m = Math.max(0, Math.floor(mins || 0));
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+
 function fmtMin(m) { const h=Math.floor(m/60),r=m%60; return r?`${h}h${r}m`:`${h}h`; }
 function fmtYen(n) { return '¥'+Math.round(n).toLocaleString('ja-JP'); }
 
@@ -349,11 +366,20 @@ function monthlySalary() {
   for (let d=1;d<=dim;d++) {
     (events[dateKey(y,m,d)]||[]).filter(ev=>isShift(ev.catId)).forEach(ev=>{
       const {workMinutes,pay}=calcShift(ev);
-      if (!res[ev.catId]) res[ev.catId]={workMinutes:0,pay:0};
+      if (!res[ev.catId]) res[ev.catId]={workMinutes:0,pay:0,cashoutPay:0};
       res[ev.catId].workMinutes+=workMinutes;
       res[ev.catId].pay+=pay;
     });
   }
+  // 当月にキャッシュアウトされた残業を給料に加算
+  shiftCats().forEach(cat => {
+    const cashoutPay = monthlyCashoutPayByCat(cat.id, y, m);
+    if (cashoutPay > 0) {
+      if (!res[cat.id]) res[cat.id]={workMinutes:0,pay:0,cashoutPay:0};
+      res[cat.id].cashoutPay = cashoutPay;
+      res[cat.id].pay += cashoutPay;
+    }
+  });
   return res;
 }
 
@@ -366,11 +392,27 @@ function monthlySalaryToDate() {
   for (let d=1;d<=maxDay;d++) {
     (events[dateKey(y,m,d)]||[]).filter(ev=>isShift(ev.catId)).forEach(ev=>{
       const {workMinutes,pay}=calcShift(ev);
-      if (!res[ev.catId]) res[ev.catId]={workMinutes:0,pay:0};
+      if (!res[ev.catId]) res[ev.catId]={workMinutes:0,pay:0,cashoutPay:0};
       res[ev.catId].workMinutes+=workMinutes;
       res[ev.catId].pay+=pay;
     });
   }
+  // 当月分のキャッシュアウト（今日以前のもののみ）
+  shiftCats().forEach(cat => {
+    const cashouts = monthlyCashoutsByCat(cat.id, y, m).filter(c => {
+      if (!isCurrentMonth) return true;
+      const d = new Date(c.dateKey);
+      return d.getDate() <= maxDay;
+    });
+    const minutes = cashouts.reduce((s, c) => s + c.minutes, 0);
+    const wage = getCat(cat.id)?.hourlyWage ?? 0;
+    const cashoutPay = Math.floor(minutes / 60 * wage);
+    if (cashoutPay > 0) {
+      if (!res[cat.id]) res[cat.id]={workMinutes:0,pay:0,cashoutPay:0};
+      res[cat.id].cashoutPay = cashoutPay;
+      res[cat.id].pay += cashoutPay;
+    }
+  });
   return res;
 }
 
@@ -438,9 +480,10 @@ async function loadFromSupabase() {
       const timeEnd      = r.time_end      ?? r.timeEnd      ?? r.time_end_col ?? '';
       const shiftStart   = r.shift_start   ?? r.shiftStart   ?? r.start        ?? '';
       const shiftEnd     = r.shift_end     ?? r.shiftEnd     ?? r.end          ?? '';
-      const breakMinutes = r.break_minutes ?? r.breakMinutes ?? r.break        ?? 0;
-      const catId        = r.cat_id        ?? r.catId        ?? r.category_id  ?? 0;
-      const dateKey2     = r.date_key      ?? r.dateKey      ?? r.date         ?? key;
+      const breakMinutes    = r.break_minutes    ?? r.breakMinutes    ?? r.break        ?? 0;
+      const overtimeMinutes = r.overtime_minutes ?? r.overtimeMinutes ?? 0;
+      const catId           = r.cat_id           ?? r.catId           ?? r.category_id  ?? 0;
+      const dateKey2        = r.date_key         ?? r.dateKey         ?? r.date         ?? key;
       events[key].push({
         _dbId:        r.id,
         catId,
@@ -449,11 +492,13 @@ async function loadFromSupabase() {
         timeEnd,
         shiftStart,
         shiftEnd,
-        breakMinutes
+        breakMinutes,
+        overtimeMinutes
       });
     });
 
     selectedCatId = normalCats()[0]?.id ?? categories[0]?.id;
+    await loadOvertimeCashoutsFromSupabase();
     setSyncStatus('synced');
   } catch (e) {
     console.error('Load error:', e);
@@ -513,19 +558,24 @@ async function detectEventColumns() {
     const cols = Object.keys(data[0]);
     console.log('events カラム名:', cols);
     _evColMap = {
-      timeEnd:      cols.find(c => /time.?end|endtime|end.?time/i.test(c)) ?? 'time_end',
-      shiftStart:   cols.find(c => /shift.?start|start.?shift/i.test(c))  ?? 'shift_start',
-      shiftEnd:     cols.find(c => /shift.?end|end.?shift/i.test(c))      ?? 'shift_end',
-      breakMinutes: cols.find(c => /break/i.test(c))                       ?? 'break_minutes',
-      dateKey:      cols.find(c => /date.?key|key.?date/i.test(c))         ?? 'date_key',
-      catId:        cols.find(c => /cat.?id|category.?id/i.test(c))        ?? 'cat_id',
-      userId:       cols.find(c => /user.?id/i.test(c))                    ?? 'user_id',
+      timeEnd:         cols.find(c => /time.?end|endtime|end.?time/i.test(c)) ?? 'time_end',
+      shiftStart:      cols.find(c => /shift.?start|start.?shift/i.test(c))  ?? 'shift_start',
+      shiftEnd:        cols.find(c => /shift.?end|end.?shift/i.test(c))      ?? 'shift_end',
+      breakMinutes:    cols.find(c => /break/i.test(c))                       ?? 'break_minutes',
+      overtimeMinutes: cols.find(c => /overtime/i.test(c))                    ?? 'overtime_minutes',
+      dateKey:         cols.find(c => /date.?key|key.?date/i.test(c))         ?? 'date_key',
+      catId:           cols.find(c => /cat.?id|category.?id/i.test(c))        ?? 'cat_id',
+      userId:          cols.find(c => /user.?id/i.test(c))                    ?? 'user_id',
     };
+    // overtime_minutes カラムが存在するかチェック（マイグレーション未実行の環境向け）
+    _evColMap._hasOvertime = cols.some(c => /overtime/i.test(c));
   } else {
     // テーブルが空の場合はデフォルトを使う
     _evColMap = {
       timeEnd: 'time_end', shiftStart: 'shift_start', shiftEnd: 'shift_end',
-      breakMinutes: 'break_minutes', dateKey: 'date_key', catId: 'cat_id', userId: 'user_id'
+      breakMinutes: 'break_minutes', overtimeMinutes: 'overtime_minutes',
+      dateKey: 'date_key', catId: 'cat_id', userId: 'user_id',
+      _hasOvertime: true
     };
   }
   return _evColMap;
@@ -546,6 +596,7 @@ async function addEventToSupabase(key, ev) {
       [m.shiftEnd]:     ev.shiftEnd     || null,
       [m.breakMinutes]: ev.breakMinutes ?? 0
     };
+    if (m._hasOvertime) row[m.overtimeMinutes] = ev.overtimeMinutes ?? 0;
     const { data, error } = await db.from('events').insert(row).select().single();
     if (error) throw error;
     ev._dbId = data.id;
@@ -580,7 +631,7 @@ async function updateEventInSupabase(ev) {
   setSyncStatus('syncing');
   try {
     const m = await detectEventColumns();
-    const { error } = await db.from('events').update({
+    const payload = {
       [m.catId]:        ev.catId,
       title:            ev.title        ?? '',
       time:             ev.time         || null,
@@ -588,7 +639,9 @@ async function updateEventInSupabase(ev) {
       [m.shiftStart]:   ev.shiftStart   || null,
       [m.shiftEnd]:     ev.shiftEnd     || null,
       [m.breakMinutes]: ev.breakMinutes ?? 0
-    }).eq('id', ev._dbId);
+    };
+    if (m._hasOvertime) payload[m.overtimeMinutes] = ev.overtimeMinutes ?? 0;
+    const { error } = await db.from('events').update(payload).eq('id', ev._dbId);
     if (error) throw error;
     setSyncStatus('synced');
   } catch (e) {
@@ -596,6 +649,130 @@ async function updateEventInSupabase(ev) {
     setSyncStatus('error');
     alert('予定の更新に失敗しました。\n' + (e.message || JSON.stringify(e)));
   }
+}
+
+// ── Supabase: overtime cashouts ───────────────────────────────────────────────
+
+async function loadOvertimeCashoutsFromSupabase() {
+  if (!currentUser) return;
+  try {
+    const { data, error } = await db
+      .from('overtime_cashouts')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      // テーブル未作成（マイグレーション未実行）の場合は静かに無視
+      if (error.code === '42P01' || /relation .* does not exist/i.test(error.message || '')) {
+        console.warn('overtime_cashouts テーブルが未作成です。マイグレーションを実行してください。');
+        overtimeCashouts = [];
+        return;
+      }
+      throw error;
+    }
+    overtimeCashouts = (data || []).map(r => ({
+      _dbId:     r.id,
+      catId:     r.cat_id,
+      minutes:   r.minutes,
+      note:      r.note ?? '',
+      dateKey:   r.date_key,
+      createdAt: r.created_at
+    }));
+  } catch (e) {
+    console.error('Load cashouts error:', e);
+    overtimeCashouts = [];
+  }
+}
+
+async function addOvertimeCashoutToSupabase(c) {
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await db.from('overtime_cashouts').insert({
+      user_id:  currentUser.id,
+      cat_id:   c.catId,
+      minutes:  c.minutes,
+      note:     c.note ?? '',
+      date_key: c.dateKey
+    }).select().single();
+    if (error) throw error;
+    c._dbId = data.id;
+    c.createdAt = data.created_at;
+    setSyncStatus('synced');
+  } catch (e) {
+    console.error('Add cashout error:', e);
+    setSyncStatus('error');
+    alert('残業キャッシュアウトの保存に失敗しました。\n' + (e.message || JSON.stringify(e)));
+    throw e;
+  }
+}
+
+async function deleteOvertimeCashoutFromSupabase(c) {
+  if (!c._dbId) return;
+  setSyncStatus('syncing');
+  try {
+    const { error } = await db.from('overtime_cashouts').delete().eq('id', c._dbId);
+    if (error) throw error;
+    setSyncStatus('synced');
+  } catch (e) {
+    console.error('Delete cashout error:', e);
+    setSyncStatus('error');
+  }
+}
+
+// ── Overtime aggregations ─────────────────────────────────────────────────────
+
+// 全シフトの残業合計（カテゴリ別、全期間）
+function totalOvertimeMinutesByCat(catId) {
+  let total = 0;
+  for (const key of Object.keys(events)) {
+    for (const ev of events[key]) {
+      if (ev.catId === catId && isShift(ev.catId)) {
+        total += ev.overtimeMinutes ?? 0;
+      }
+    }
+  }
+  return total;
+}
+
+// 既にキャッシュアウト済みの残業合計（カテゴリ別）
+function totalCashoutMinutesByCat(catId) {
+  return overtimeCashouts.filter(c => c.catId === catId).reduce((s, c) => s + (c.minutes || 0), 0);
+}
+
+// 残業バンク残高 = 累積残業 - 累積キャッシュアウト
+function getOvertimeBank(catId) {
+  return Math.max(0, totalOvertimeMinutesByCat(catId) - totalCashoutMinutesByCat(catId));
+}
+
+// 指定月のシフトから集計した残業時間（カテゴリ別）
+function monthlyOvertimeMinutesByCat(catId, year, month) {
+  let total = 0;
+  const dim = new Date(year, month+1, 0).getDate();
+  for (let d = 1; d <= dim; d++) {
+    const key = dateKey(year, month, d);
+    for (const ev of (events[key] || [])) {
+      if (ev.catId === catId && isShift(ev.catId)) {
+        total += ev.overtimeMinutes ?? 0;
+      }
+    }
+  }
+  return total;
+}
+
+// 指定月にキャッシュアウトされた額（カテゴリ別）
+function monthlyCashoutsByCat(catId, year, month) {
+  return overtimeCashouts.filter(c => {
+    if (c.catId !== catId) return false;
+    const d = new Date(c.dateKey);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+}
+
+// 指定月にキャッシュアウト分から発生した給料 (カテゴリ別)
+function monthlyCashoutPayByCat(catId, year, month) {
+  const wage = getCat(catId)?.hourlyWage ?? 0;
+  const minutes = monthlyCashoutsByCat(catId, year, month).reduce((s, c) => s + c.minutes, 0);
+  return Math.floor(minutes / 60 * wage);
 }
 
 // ── Supabase: move event to another date ──────────────────────────────────────
@@ -811,7 +988,7 @@ document.getElementById('js-auth-google').addEventListener('click', async () => 
 document.getElementById('js-logout').addEventListener('click', async () => {
   if(!ensureDb()) return;
   await db.auth.signOut();
-  currentUser = null; categories = []; events = {}; rebuildCatMap();
+  currentUser = null; categories = []; events = {}; overtimeCashouts = []; rebuildCatMap();
   showAuthScreen();
 });
 
@@ -840,24 +1017,39 @@ function renderSalarySummary() {
                          curDate.getMonth()===today.getMonth();
   box.innerHTML = '';
 
-  const active = shiftCats().filter(c => summary[c.id]);
-  if (!active.length) {
+  const shiftCategories = shiftCats();
+  const active = shiftCategories.filter(c => summary[c.id]);
+  const anyBankBalance = shiftCategories.some(c => getOvertimeBank(c.id) > 0);
+
+  if (!active.length && !anyBankBalance) {
     box.innerHTML = '<div class="salary-empty">シフトの記録がありません</div>';
     return;
   }
 
   let total = 0;
-  active.forEach(cat => {
-    const { workMinutes, pay } = summary[cat.id];
-    total += pay;
+  // 表示対象: 当月にシフトがあるか、バンクに残高があるカテゴリすべて
+  const displayCats = shiftCategories.filter(c => summary[c.id] || getOvertimeBank(c.id) > 0);
+  displayCats.forEach(cat => {
+    const data = summary[cat.id] || {workMinutes:0, pay:0, cashoutPay:0};
+    total += data.pay;
     const row = document.createElement('div');
     row.className = 'salary-job-row';
     row.innerHTML = `
       <span class="salary-job-dot" style="background:${cat.color}"></span>
       <span class="salary-job-name">${escHtml(cat.name)}</span>
-      <span class="salary-job-hours">${fmtMin(workMinutes)}</span>
-      <span class="salary-job-amount">${fmtYen(pay)}</span>`;
+      <span class="salary-job-hours">${fmtMin(data.workMinutes)}</span>
+      <span class="salary-job-amount">${fmtYen(data.pay)}</span>`;
     box.appendChild(row);
+
+    // バンク残高（ある場合のみ表示）
+    const bank = getOvertimeBank(cat.id);
+    const ovRow = document.createElement('div');
+    ovRow.className = 'salary-overtime-row';
+    const cashoutHHMM = data.cashoutPay > 0 ? ` <span style="opacity:.7">(振替済 ${fmtYen(data.cashoutPay)})</span>` : '';
+    ovRow.innerHTML = `
+      <span class="overtime-label">⏱ 残業バンク${cashoutHHMM}</span>
+      <span class="overtime-balance${bank === 0 ? ' is-zero' : ''}">${formatMinToHHMM(bank)}</span>`;
+    box.appendChild(ovRow);
   });
 
   box.insertAdjacentHTML('beforeend','<div class="salary-divider"></div>');
@@ -880,6 +1072,18 @@ function renderSalarySummary() {
   tot.innerHTML = `<span class="salary-total-label">${isCurrentMonth ? '今月' : '合計'}</span>
                    <span class="salary-total-amount">${fmtYen(total)}</span>`;
   box.appendChild(tot);
+
+  // ── 残業バンク操作ボタン ──
+  if (shiftCategories.length > 0) {
+    const actions = document.createElement('div');
+    actions.className = 'salary-overtime-actions';
+    actions.innerHTML = `
+      <button id="js-overtime-cashout-open" type="button" ${anyBankBalance ? '' : 'disabled'}>⏱ 残業を使う</button>
+      <button id="js-overtime-history-open" type="button">📊 履歴</button>`;
+    box.appendChild(actions);
+    document.getElementById('js-overtime-cashout-open').addEventListener('click', openOvertimeCashoutModal);
+    document.getElementById('js-overtime-history-open').addEventListener('click', openOvertimeHistoryModal);
+  }
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -1230,9 +1434,11 @@ function renderExistingEvents() {
     if (isShift(ev.catId)&&ev.shiftStart) {
       const {workMinutes,breakMinutes,pay}=calcShift(ev);
       const brk=breakMinutes>0?`休憩${breakMinutes}分　`:'';
+      const ot = ev.overtimeMinutes ?? 0;
+      const otTag = ot > 0 ? `<span style="color:var(--color-accent-orange);font-weight:600">⏱+${formatMinToHHMM(ot)}</span>　` : '';
       titleHtml=`<span class="ev-cat-chip" style="background:${cat.color}">${escHtml(cat.name)}</span>`;
       metaHtml=`<span class="ev-shift-time">${ev.shiftStart} – ${ev.shiftEnd}</span>
-                <span>${brk}勤務 ${fmtMin(workMinutes)}</span>
+                <span>${brk}${otTag}勤務 ${fmtMin(workMinutes)}</span>
                 <span class="ev-shift-pay">${fmtYen(pay)}</span>`;
     } else {
       titleHtml=escHtml(ev.title);
@@ -1312,9 +1518,10 @@ function openEditModal(ev) {
   document.getElementById('js-edit-tab-shift').style.display = isS ? ''     : 'none';
 
   if (isS) {
-    document.getElementById('js-edit-shift-start').value = ev.shiftStart || '';
-    document.getElementById('js-edit-shift-end').value   = ev.shiftEnd   || '';
-    document.getElementById('js-edit-shift-break').value = ev.breakMinutes ?? 0;
+    document.getElementById('js-edit-shift-start').value    = ev.shiftStart || '';
+    document.getElementById('js-edit-shift-end').value      = ev.shiftEnd   || '';
+    document.getElementById('js-edit-shift-break').value    = ev.breakMinutes ?? 0;
+    document.getElementById('js-edit-shift-overtime').value = formatMinToHHMM(ev.overtimeMinutes ?? 0);
     updateEditWagePreview();
   } else {
     document.getElementById('js-edit-ev-title').value       = ev.title   || '';
@@ -1334,10 +1541,12 @@ function openEditModal(ev) {
 // Update visual selection state of chips without re-rendering the entire list.
 function applyChipSelection(listEl, selectedId) {
   listEl.querySelectorAll('.cat-chip').forEach(el => {
-    const id  = el.dataset.catId;
-    const cat = getCat(id);
+    // dataset.catId is a string; convert to number to match cat.id type.
+    const rawId  = el.dataset.catId;
+    const id     = isNaN(Number(rawId)) ? rawId : Number(rawId);
+    const cat    = getCat(id);
     if (!cat) return;
-    const isSel = id === String(selectedId);
+    const isSel = String(id) === String(selectedId);
     el.classList.toggle('is-selected', isSel);
     el.style.background = isSel ? cat.color : '';
     const dot = el.querySelector('.cat-chip-dot');
@@ -1367,18 +1576,24 @@ function updateEditWagePreview() {
   const start = document.getElementById('js-edit-shift-start').value;
   const end   = document.getElementById('js-edit-shift-end').value;
   const brk   = parseInt(document.getElementById('js-edit-shift-break').value) || 0;
+  const ot    = parseHHMMtoMin(document.getElementById('js-edit-shift-overtime').value);
   const cat   = getCat(editingEv?.catId) ?? shiftCats()[0];
   const hEl   = document.getElementById('js-edit-preview-hours');
   const bEl   = document.getElementById('js-edit-preview-break');
+  const oEl   = document.getElementById('js-edit-preview-overtime');
   const pEl   = document.getElementById('js-edit-preview-pay');
-  if (!start || !end || !cat) { hEl.textContent='—'; bEl.textContent='—'; pEl.textContent='—'; return; }
+  if (!start || !end || !cat) {
+    hEl.textContent='—'; bEl.textContent='—'; if (oEl) oEl.textContent='—'; pEl.textContent='—';
+    return;
+  }
   const {totalMinutes,workMinutes,pay} = calcShift({shiftStart:start,shiftEnd:end,breakMinutes:brk,catId:cat.id});
   hEl.textContent = `${fmtMin(totalMinutes)}（実働 ${fmtMin(workMinutes)}）`;
   bEl.textContent = brk > 0 ? `${brk}分` : 'なし';
+  if (oEl) oEl.textContent = ot > 0 ? formatMinToHHMM(ot) : 'なし';
   pEl.textContent = fmtYen(pay);
 }
 
-['js-edit-shift-start','js-edit-shift-end','js-edit-shift-break'].forEach(id => {
+['js-edit-shift-start','js-edit-shift-end','js-edit-shift-break','js-edit-shift-overtime'].forEach(id => {
   document.getElementById(id).addEventListener('input', updateEditWagePreview);
 });
 
@@ -1390,10 +1605,12 @@ document.getElementById('js-edit-save-btn').addEventListener('click', async () =
     const start = document.getElementById('js-edit-shift-start').value;
     const end   = document.getElementById('js-edit-shift-end').value;
     const brk   = parseInt(document.getElementById('js-edit-shift-break').value) || 0;
+    const ot    = parseHHMMtoMin(document.getElementById('js-edit-shift-overtime').value);
     if (!start || !end) { document.getElementById('js-edit-shift-start').focus(); return; }
-    editingEv.shiftStart   = start;
-    editingEv.shiftEnd     = end;
-    editingEv.breakMinutes = brk;
+    editingEv.shiftStart      = start;
+    editingEv.shiftEnd        = end;
+    editingEv.breakMinutes    = brk;
+    editingEv.overtimeMinutes = ot;
   } else {
     const title = document.getElementById('js-edit-ev-title').value.trim();
     if (!title) { document.getElementById('js-edit-ev-title').focus(); return; }
@@ -1466,7 +1683,7 @@ async function addEvent() {
 
 // ── Shift wage preview ────────────────────────────────────────────────────────
 
-['js-shift-start','js-shift-end','js-shift-break'].forEach(id=>{
+['js-shift-start','js-shift-end','js-shift-break','js-shift-overtime'].forEach(id=>{
   document.getElementById(id).addEventListener('input',updateWagePreview);
 });
 
@@ -1474,14 +1691,17 @@ function updateWagePreview() {
   const start=document.getElementById('js-shift-start').value;
   const end=document.getElementById('js-shift-end').value;
   const brk=parseInt(document.getElementById('js-shift-break').value)||0;
+  const ot =parseHHMMtoMin(document.getElementById('js-shift-overtime').value);
   const cat=shiftCats()[0];
   const hEl=document.getElementById('js-preview-hours');
   const bEl=document.getElementById('js-preview-break');
+  const oEl=document.getElementById('js-preview-overtime');
   const pEl=document.getElementById('js-preview-pay');
-  if (!start||!end||!cat){hEl.textContent='—';bEl.textContent='—';pEl.textContent='—';return;}
+  if (!start||!end||!cat){hEl.textContent='—';bEl.textContent='—'; if(oEl)oEl.textContent='—'; pEl.textContent='—';return;}
   const {totalMinutes,workMinutes,pay}=calcShift({shiftStart:start,shiftEnd:end,breakMinutes:brk,catId:cat.id});
   hEl.textContent=`${fmtMin(totalMinutes)}（実働 ${fmtMin(workMinutes)}）`;
   bEl.textContent=brk>0?`${brk}分`:'なし';
+  if(oEl) oEl.textContent = ot>0 ? formatMinToHHMM(ot) : 'なし';
   pEl.textContent=fmtYen(pay);
 }
 
@@ -1493,20 +1713,248 @@ async function addShift() {
   const start=document.getElementById('js-shift-start').value;
   const end=document.getElementById('js-shift-end').value;
   const brk=parseInt(document.getElementById('js-shift-break').value)||0;
+  const ot =parseHHMMtoMin(document.getElementById('js-shift-overtime').value);
   const cat=shiftCats()[0];
   if (!start||!end){document.getElementById('js-shift-start').focus();return;}
   if (!cat) return;
-  const ev={title:'',catId:cat.id,shiftStart:start,shiftEnd:end,breakMinutes:brk};
+  const ev={title:'',catId:cat.id,shiftStart:start,shiftEnd:end,breakMinutes:brk,overtimeMinutes:ot};
   if (!events[selectedKey]) events[selectedKey]=[];
   events[selectedKey].push(ev);
   await addEventToSupabase(selectedKey,ev);
   document.getElementById('js-shift-start').value='';
   document.getElementById('js-shift-end').value='';
   document.getElementById('js-shift-break').value='';
+  document.getElementById('js-shift-overtime').value='00:00';
   updateWagePreview();
   renderExistingEvents();
   renderAll();
 }
+
+// ── Overtime cashout modal ────────────────────────────────────────────────────
+
+let _overtimeCashoutCatId = null;
+let _overtimeHistoryCatId = null;
+
+function openOvertimeCashoutModal() {
+  const cats = shiftCats().filter(c => getOvertimeBank(c.id) > 0);
+  if (!cats.length) {
+    alert('残業バンクに残高があるバイトがありません。');
+    return;
+  }
+  _overtimeCashoutCatId = cats[0].id;
+  document.getElementById('js-overtime-cashout-time').value = '00:00';
+  document.getElementById('js-overtime-cashout-note').value = '';
+  document.getElementById('js-overtime-cashout-warning').style.display = 'none';
+  renderOvertimeCashoutCatChips();
+  updateOvertimeCashoutPreview();
+  openOverlay('js-overtime-cashout-overlay');
+  setTimeout(() => document.getElementById('js-overtime-cashout-time')?.focus(), 80);
+}
+
+function renderOvertimeCashoutCatChips() {
+  const list = document.getElementById('js-overtime-cashout-cat-list');
+  list.innerHTML = '';
+  shiftCats().forEach(cat => {
+    const bank = getOvertimeBank(cat.id);
+    const sel = cat.id === _overtimeCashoutCatId;
+    const chip = document.createElement('div');
+    chip.className = 'cat-chip' + (sel ? ' is-selected' : '');
+    chip.dataset.catId = cat.id;
+    if (sel) chip.style.background = cat.color;
+    chip.innerHTML = `<span class="cat-chip-dot" style="background:${sel?'rgba(255,255,255,.7)':cat.color}"></span>${escHtml(cat.name)} <span style="opacity:.6;font-size:10px;margin-left:4px">${formatMinToHHMM(bank)}</span>`;
+    chip.addEventListener('click', () => {
+      _overtimeCashoutCatId = cat.id;
+      applyChipSelection(list, _overtimeCashoutCatId);
+      updateOvertimeCashoutPreview();
+    });
+    list.appendChild(chip);
+  });
+}
+
+function updateOvertimeCashoutPreview() {
+  const cat = getCat(_overtimeCashoutCatId);
+  if (!cat) return;
+  const bank = getOvertimeBank(cat.id);
+  const minutes = parseHHMMtoMin(document.getElementById('js-overtime-cashout-time').value);
+  const wage = cat.hourlyWage ?? 0;
+  const pay = Math.floor(minutes / 60 * wage);
+
+  document.getElementById('js-overtime-cashout-balance').textContent = formatMinToHHMM(bank);
+  document.getElementById('js-overtime-cashout-preview-amount').textContent = fmtYen(pay);
+
+  const warn = document.getElementById('js-overtime-cashout-warning');
+  const btn  = document.getElementById('js-overtime-cashout-confirm');
+  if (minutes === 0) {
+    warn.style.display = 'none';
+    btn.disabled = true;
+  } else if (minutes > bank) {
+    warn.textContent = `バンク残高（${formatMinToHHMM(bank)}）を超えています。`;
+    warn.style.display = '';
+    btn.disabled = true;
+  } else if (!wage) {
+    warn.textContent = 'このカテゴリには時給が設定されていません。';
+    warn.style.display = '';
+    btn.disabled = true;
+  } else {
+    warn.style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('js-overtime-cashout-time').addEventListener('input', updateOvertimeCashoutPreview);
+
+document.getElementById('js-overtime-cashout-close').addEventListener('click', () => closeOverlay('js-overtime-cashout-overlay'));
+document.getElementById('js-overtime-cashout-cancel').addEventListener('click', () => closeOverlay('js-overtime-cashout-overlay'));
+document.getElementById('js-overtime-cashout-overlay').addEventListener('click', e => {
+  if (e.target.id === 'js-overtime-cashout-overlay') closeOverlay('js-overtime-cashout-overlay');
+});
+
+document.getElementById('js-overtime-cashout-confirm').addEventListener('click', async () => {
+  const cat = getCat(_overtimeCashoutCatId);
+  if (!cat) return;
+  const minutes = parseHHMMtoMin(document.getElementById('js-overtime-cashout-time').value);
+  const bank = getOvertimeBank(cat.id);
+  if (minutes <= 0 || minutes > bank) return;
+  const note = document.getElementById('js-overtime-cashout-note').value.trim();
+
+  // 表示中の月の1日を date_key とする（その月に計上）
+  const y = curDate.getFullYear(), m = curDate.getMonth();
+  const key = dateKey(y, m, 1);
+
+  const cashout = { catId: cat.id, minutes, note, dateKey: key };
+  try {
+    await addOvertimeCashoutToSupabase(cashout);
+    overtimeCashouts.unshift(cashout);
+    closeOverlay('js-overtime-cashout-overlay');
+    renderAll();
+  } catch (_) { /* error already shown */ }
+});
+
+// ── Overtime history modal ────────────────────────────────────────────────────
+
+function openOvertimeHistoryModal() {
+  const cats = shiftCats();
+  if (!cats.length) return;
+  _overtimeHistoryCatId = cats[0].id;
+  renderOvertimeHistoryTabs();
+  renderOvertimeHistoryContent();
+  openOverlay('js-overtime-history-overlay');
+}
+
+function renderOvertimeHistoryTabs() {
+  const tabs = document.getElementById('js-overtime-history-tabs');
+  tabs.innerHTML = '';
+  shiftCats().forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'overtime-history-tab' + (cat.id === _overtimeHistoryCatId ? ' is-active' : '');
+    btn.dataset.catId = cat.id;
+    btn.innerHTML = `<span style="color:${cat.color}">●</span> ${escHtml(cat.name)}`;
+    btn.addEventListener('click', () => {
+      _overtimeHistoryCatId = cat.id;
+      tabs.querySelectorAll('.overtime-history-tab').forEach(t => {
+        t.classList.toggle('is-active', t.dataset.catId === String(cat.id));
+      });
+      renderOvertimeHistoryContent();
+    });
+    tabs.appendChild(btn);
+  });
+}
+
+function renderOvertimeHistoryContent() {
+  const cat = getCat(_overtimeHistoryCatId);
+  const box = document.getElementById('js-overtime-history-content');
+  box.innerHTML = '';
+  if (!cat) return;
+
+  const bank = getOvertimeBank(cat.id);
+  const totalEarned = totalOvertimeMinutesByCat(cat.id);
+  const totalCashedOut = totalCashoutMinutesByCat(cat.id);
+
+  // バンク残高サマリー
+  const summary = document.createElement('div');
+  summary.style.cssText = 'display:flex;justify-content:space-around;padding:10px;background:var(--color-bg-input);border-radius:5px;margin-bottom:14px;font-size:12px';
+  summary.innerHTML = `
+    <div style="text-align:center"><div style="opacity:.6;font-size:10px">累計残業</div><div style="font-weight:700;font-size:14px">${formatMinToHHMM(totalEarned)}</div></div>
+    <div style="text-align:center"><div style="opacity:.6;font-size:10px">振替済</div><div style="font-weight:700;font-size:14px;color:var(--color-positive)">${formatMinToHHMM(totalCashedOut)}</div></div>
+    <div style="text-align:center"><div style="opacity:.6;font-size:10px">バンク残高</div><div style="font-weight:700;font-size:14px;color:var(--color-accent-orange)">${formatMinToHHMM(bank)}</div></div>`;
+  box.appendChild(summary);
+
+  // 月別残業ログ
+  const monthLog = collectMonthlyOvertimeLog(cat.id);
+  if (monthLog.length) {
+    const section = document.createElement('div');
+    section.className = 'overtime-history-section';
+    section.innerHTML = '<div class="overtime-history-section-title">月別の残業</div>';
+    monthLog.forEach(({year, month, minutes, count}) => {
+      const row = document.createElement('div');
+      row.className = 'overtime-history-row';
+      row.innerHTML = `
+        <span class="row-label">${year}年 ${month+1}月</span>
+        <span class="row-meta">${count}件のシフト</span>
+        <span class="row-amount">+${formatMinToHHMM(minutes)}</span>`;
+      section.appendChild(row);
+    });
+    box.appendChild(section);
+  }
+
+  // キャッシュアウト履歴
+  const section2 = document.createElement('div');
+  section2.className = 'overtime-history-section';
+  section2.innerHTML = '<div class="overtime-history-section-title">給料への振替履歴</div>';
+  const cashouts = overtimeCashouts.filter(c => c.catId === cat.id);
+  if (!cashouts.length) {
+    section2.innerHTML += '<div class="overtime-history-empty">まだ振替えていません</div>';
+  } else {
+    cashouts.forEach(c => {
+      const d = new Date(c.dateKey);
+      const pay = Math.floor(c.minutes / 60 * (cat.hourlyWage ?? 0));
+      const row = document.createElement('div');
+      row.className = 'overtime-history-row';
+      row.innerHTML = `
+        <span class="row-label">${d.getFullYear()}年 ${d.getMonth()+1}月 ${escHtml(c.note || '')}</span>
+        <span class="row-amount">${formatMinToHHMM(c.minutes)}</span>
+        <span class="row-pay">${fmtYen(pay)}</span>
+        <button class="row-undo" type="button">取消</button>`;
+      row.querySelector('.row-undo').addEventListener('click', async () => {
+        if (!confirm(`この振替（${formatMinToHHMM(c.minutes)} / ${fmtYen(pay)}）を取消してバンクに戻しますか？`)) return;
+        await deleteOvertimeCashoutFromSupabase(c);
+        const idx = overtimeCashouts.indexOf(c);
+        if (idx !== -1) overtimeCashouts.splice(idx, 1);
+        renderOvertimeHistoryContent();
+        renderAll();
+      });
+      section2.appendChild(row);
+    });
+  }
+  box.appendChild(section2);
+}
+
+function collectMonthlyOvertimeLog(catId) {
+  // 全期間の events を走査して年月別に集計
+  const buckets = new Map();
+  for (const key of Object.keys(events)) {
+    const [y, m] = key.split('-').map(Number);
+    if (isNaN(y) || isNaN(m)) continue;
+    for (const ev of events[key]) {
+      if (ev.catId !== catId || !isShift(ev.catId)) continue;
+      const ot = ev.overtimeMinutes ?? 0;
+      if (!ot) continue;
+      const k = `${y}-${m}`;
+      if (!buckets.has(k)) buckets.set(k, {year: y, month: m-1, minutes: 0, count: 0});
+      buckets.get(k).minutes += ot;
+      buckets.get(k).count += 1;
+    }
+  }
+  return Array.from(buckets.values()).sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year;
+    return b.month - a.month;
+  });
+}
+
+document.getElementById('js-overtime-history-close').addEventListener('click', () => closeOverlay('js-overtime-history-overlay'));
+document.getElementById('js-overtime-history-overlay').addEventListener('click', e => {
+  if (e.target.id === 'js-overtime-history-overlay') closeOverlay('js-overtime-history-overlay');
+});
 
 // ── Category editor ───────────────────────────────────────────────────────────
 
@@ -1888,7 +2336,7 @@ document.getElementById('js-open-budget-cat-editor').addEventListener('click',op
 document.addEventListener('keydown',e=>{
   // Escapeキーはinput内でもモーダルを閉じられるようにする
   if (e.key==='Escape'){
-    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');
+    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');
     if (document.activeElement) document.activeElement.blur();
     return;
   }
