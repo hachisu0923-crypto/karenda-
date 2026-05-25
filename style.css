@@ -1482,17 +1482,23 @@ input  { font-family: inherit; }
 .drink-counter-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  margin-bottom: 12px;
-  background-color: var(--color-bg-input);
-  border-radius: var(--radius-md);
+  gap: 6px;
+  padding: 0;
+  margin: 0 0 8px;
+  background: transparent;
 }
-.drink-counter-row .form-label { margin: 0; flex: 1; font-size: 12px; }
+.drink-counter-row .form-label {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
 .drink-counter-input {
-  width: 70px;
+  width: 54px;
+  padding: 3px 6px;
+  font-size: 12px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
