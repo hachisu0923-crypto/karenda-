@@ -2575,6 +2575,8 @@ applyTheme(isDark);
 
   document.addEventListener('touchstart', e => {
     if (!isMobile()) return;
+    // モーダル表示中はエッジスワイプを無効化（暴発防止）
+    if (document.querySelector('.overlay.is-open')) { tracking = false; return; }
     const t = e.touches[0];
     const sidebarOpen = sidebar.classList.contains('is-open');
     fromEdge = !sidebarOpen && t.clientX <= EDGE_ZONE;
