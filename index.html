@@ -384,8 +384,12 @@
 
       <div class="form-row drink-counter-row">
         <label class="form-label" for="js-day-drink-count">🍺 飲んだ数</label>
-        <input class="form-input drink-counter-input" type="number" id="js-day-drink-count"
-               min="0" max="99" step="1" value="0" inputmode="numeric" />
+        <div class="drink-counter-stepper">
+          <button type="button" class="drink-counter-btn" id="js-day-drink-dec" aria-label="1つ減らす">−</button>
+          <input class="form-input drink-counter-input" type="number" id="js-day-drink-count"
+                 min="0" max="99" step="1" value="0" inputmode="numeric" />
+          <button type="button" class="drink-counter-btn" id="js-day-drink-inc" aria-label="1つ増やす">+</button>
+        </div>
       </div>
 
       <div class="form-tab-bar">
