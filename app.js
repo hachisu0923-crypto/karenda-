@@ -1372,6 +1372,7 @@ function openDayModal(y,m,d) {
   document.getElementById('js-day-modal-sub').textContent=DAYS_EN[dow];
 
   document.getElementById('js-day-drink-count').value = dailyDrinks[selectedKey] ?? 0;
+  document.getElementById('js-day-drink-count').dispatchEvent(new Event('input', { bubbles: true }));
 
   document.getElementById('js-ev-title').value='';
   document.getElementById('js-ev-time-start').value='';
@@ -1738,6 +1739,33 @@ document.getElementById('js-day-drink-count').addEventListener('change', async e
   await setDrinkCount(selectedKey, v);
   renderAll();
 });
+
+// 飲酒カウンターの +/- ステッパー
+(function initDrinkStepper() {
+  const input = document.getElementById('js-day-drink-count');
+  const dec   = document.getElementById('js-day-drink-dec');
+  const inc   = document.getElementById('js-day-drink-inc');
+  if (!input || !dec || !inc) return;
+
+  function updateStepperState() {
+    const v = parseInt(input.value, 10) || 0;
+    dec.disabled = (v <= 0);
+    inc.disabled = (v >= 99);
+  }
+  function bump(delta) {
+    const cur = parseInt(input.value, 10) || 0;
+    const next = Math.max(0, Math.min(99, cur + delta));
+    if (next === cur) return;
+    input.value = next;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    updateStepperState();
+  }
+
+  dec.addEventListener('click', () => bump(-1));
+  inc.addEventListener('click', () => bump(+1));
+  input.addEventListener('input', updateStepperState);
+  updateStepperState();
+})();
 
 async function addEvent() {
   const title=document.getElementById('js-ev-title').value.trim();

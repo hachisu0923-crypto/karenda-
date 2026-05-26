@@ -1501,6 +1501,30 @@ input  { font-family: inherit; }
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.drink-counter-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.drink-counter-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.drink-counter-btn:hover { background-color: var(--color-bg-hover); border-color: var(--color-border-strong); }
+.drink-counter-btn:active { transform: translateY(1px); }
+.drink-counter-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .form-row-2col {
   display: grid;
