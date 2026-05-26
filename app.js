@@ -769,7 +769,7 @@ async function setDrinkCount(key, count) {
   } catch (e) {
     console.error('Save drink count error:', e);
     setSyncStatus('error');
-    alert('飲酒数の保存に失敗しました。\n' + (e.message || JSON.stringify(e)));
+    throw e;  // 呼び元で rollback できるよう再 throw
   }
 }
 
@@ -1729,15 +1729,29 @@ function renderCatChips() {
 document.getElementById('js-add-event-btn').addEventListener('click',addEvent);
 document.getElementById('js-ev-title').addEventListener('keydown',e=>{if(e.key==='Enter')addEvent();});
 
-// 飲酒カウンター: changeイベントでSupabaseに保存
+// 飲酒カウンター: optimistic update + 失敗時 rollback で Supabase に保存
 document.getElementById('js-day-drink-count').addEventListener('change', async e => {
   const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0));
   e.target.value = v;
   if (!selectedKey) return;
+
+  const oldV = dailyDrinks[selectedKey];   // バックアップ
   if (v === 0) delete dailyDrinks[selectedKey];
   else         dailyDrinks[selectedKey] = v;
-  await setDrinkCount(selectedKey, v);
-  renderAll();
+  renderAll();                              // 即時UI反映
+
+  try {
+    await setDrinkCount(selectedKey, v);
+  } catch (err) {
+    // Rollback
+    if (oldV == null) delete dailyDrinks[selectedKey];
+    else              dailyDrinks[selectedKey] = oldV;
+    const inp = document.getElementById('js-day-drink-count');
+    inp.value = oldV ?? 0;
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    renderAll();
+    alert('飲酒数の保存に失敗しました。\n' + (err.message || JSON.stringify(err)));
+  }
 });
 
 // 飲酒カウンターの +/- ステッパー
@@ -1847,6 +1861,9 @@ function openOvertimeCashoutModal() {
   document.getElementById('js-overtime-cashout-time').value = '00:00';
   document.getElementById('js-overtime-cashout-note').value = '';
   document.getElementById('js-overtime-cashout-warning').style.display = 'none';
+  // 計上先の月を明示（curDate ベース、挙動は変えない）
+  const sub = document.getElementById('js-overtime-cashout-sub');
+  if (sub) sub.textContent = `${curDate.getFullYear()}年${curDate.getMonth()+1}月 の給料に計上します`;
   renderOvertimeCashoutCatChips();
   updateOvertimeCashoutPreview();
   openOverlay('js-overtime-cashout-overlay');
