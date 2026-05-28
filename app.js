@@ -2601,6 +2601,17 @@ applyTheme(isDark);
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
+// ── iOS Safari ピンチ/ダブルタップ拡大の完全抑止 ────────────────────────
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
+  document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+});
+let _lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - _lastTouchEnd <= 300) e.preventDefault();
+  _lastTouchEnd = now;
+}, { passive: false });
+
 // ── Sidebar section toggle (Blender-style collapsible panels) ────────────────
 document.querySelectorAll('.sidebar-section-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
