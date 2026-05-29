@@ -1102,6 +1102,7 @@ input  { font-family: inherit; }
   pointer-events: none;
   user-select: none;
 }
+.day-drink-count.is-warn { color: var(--color-danger); }
 .day-drink-count.is-zero {
   opacity: 0.22;
   font-weight: 400;

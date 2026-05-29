@@ -1250,10 +1250,13 @@ function buildCell(y,m,d,isOther,isToday) {
   numEl.className='day-num'; numEl.textContent=d;
   cell.appendChild(numEl);
 
-  // 飲酒カウンター（セル右上に絶対配置、0も含めて常に表示、0は薄色）
+  // 飲酒カウンター（セル右上に絶対配置、0も含めて常に表示、0は薄色、3超で警告色）
   const drinkCount = dailyDrinks[key] ?? 0;
   const drinkEl = document.createElement('div');
-  drinkEl.className = 'day-drink-count' + (drinkCount === 0 ? ' is-zero' : '');
+  let drinkCls = 'day-drink-count';
+  if (drinkCount === 0) drinkCls += ' is-zero';
+  else if (drinkCount > 3) drinkCls += ' is-warn';
+  drinkEl.className = drinkCls;
   drinkEl.textContent = `🍺${drinkCount}`;
   cell.appendChild(drinkEl);
 
