@@ -756,6 +756,28 @@
   </div>
 </div>
 
+<!-- ═══════════ DRINK LIMIT WARNING MODAL ═══════════ -->
+<div class="overlay" id="js-drink-limit-overlay" role="dialog" aria-modal="true" aria-labelledby="js-drink-limit-title">
+  <div class="modal" style="max-width: 360px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-drink-limit-title">⚠️ 飲み過ぎ注意</div>
+      </div>
+      <button class="modal-close-btn" id="js-drink-limit-close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="line-height:1.6;">
+        <strong id="js-drink-limit-val">—</strong> 杯の入力です。<br>
+        1 日 3 杯を超える飲酒は健康に影響する可能性があります。
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="js-drink-limit-cancel">やめる（3杯にする）</button>
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-drink-limit-confirm">続行する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ OVERTIME HISTORY MODAL ═══════════ -->
 <div class="overlay" id="js-overtime-history-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="js-overtime-history-title">

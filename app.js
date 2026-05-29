@@ -1729,13 +1729,51 @@ function renderCatChips() {
 document.getElementById('js-add-event-btn').addEventListener('click',addEvent);
 document.getElementById('js-ev-title').addEventListener('keydown',e=>{if(e.key==='Enter')addEvent();});
 
+// 飲酒カウンター: 健康ナッジ用の警告しきい値
+const DRINK_WARN_THRESHOLD = 3;
+
+function showDrinkLimitWarning(targetValue) {
+  return new Promise(resolve => {
+    document.getElementById('js-drink-limit-val').textContent = targetValue;
+    const cancelBtn  = document.getElementById('js-drink-limit-cancel');
+    const confirmBtn = document.getElementById('js-drink-limit-confirm');
+    const closeBtn   = document.getElementById('js-drink-limit-close');
+    const onCancel  = () => cleanup(false);
+    const onConfirm = () => cleanup(true);
+    function cleanup(answer) {
+      cancelBtn.removeEventListener('click',  onCancel);
+      confirmBtn.removeEventListener('click', onConfirm);
+      closeBtn.removeEventListener('click',   onCancel);
+      closeOverlay('js-drink-limit-overlay');
+      resolve(answer);
+    }
+    cancelBtn.addEventListener('click',  onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    closeBtn.addEventListener('click',   onCancel);   // ✕ は「やめる」扱い
+    openOverlay('js-drink-limit-overlay');
+    setTimeout(() => cancelBtn.focus(), 80);          // 初期フォーカスは安全側
+  });
+}
+
 // 飲酒カウンター: optimistic update + 失敗時 rollback で Supabase に保存
 document.getElementById('js-day-drink-count').addEventListener('change', async e => {
-  const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0));
+  let v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0));
   e.target.value = v;
   if (!selectedKey) return;
 
-  const oldV = dailyDrinks[selectedKey];   // バックアップ
+  const oldStored = dailyDrinks[selectedKey] ?? 0;
+
+  // しきい値超え時の警告（最初の遷移のみ）
+  if (v > DRINK_WARN_THRESHOLD && oldStored <= DRINK_WARN_THRESHOLD) {
+    const proceed = await showDrinkLimitWarning(v);
+    if (!proceed) {
+      v = DRINK_WARN_THRESHOLD;
+      e.target.value = v;
+      e.target.dispatchEvent(new Event('input', { bubbles: true }));  // ステッパー disabled 同期
+    }
+  }
+
+  const oldV = dailyDrinks[selectedKey];   // optimistic 用バックアップ
   if (v === 0) delete dailyDrinks[selectedKey];
   else         dailyDrinks[selectedKey] = v;
   renderAll();                              // 即時UI反映
