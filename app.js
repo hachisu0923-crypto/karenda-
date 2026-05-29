@@ -1763,8 +1763,8 @@ document.getElementById('js-day-drink-count').addEventListener('change', async e
 
   const oldStored = dailyDrinks[selectedKey] ?? 0;
 
-  // しきい値超え時の警告（最初の遷移のみ）
-  if (v > DRINK_WARN_THRESHOLD && oldStored <= DRINK_WARN_THRESHOLD) {
+  // 3 を超える入力に対して毎回警告
+  if (v > DRINK_WARN_THRESHOLD) {
     const proceed = await showDrinkLimitWarning(v);
     if (!proceed) {
       v = DRINK_WARN_THRESHOLD;
