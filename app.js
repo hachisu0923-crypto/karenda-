@@ -4068,7 +4068,7 @@ function _budgetMonthKey() {
 }
 
 async function _fetchPrevMonthData(userId, y, m) {
-  const empty = { balance: 0, expCatSums: {}, incCatSums: {}, totalIncome: 0, totalExpense: 0 };
+  const empty = { balance: 0, expCatSums: {}, incCatSums: {}, totalIncome: 0, totalExpense: 0, shiftPay: 0, manualIncome: 0 };
   if (!userId || userId === 'anon') return empty;
   let prevY = y, prevM = m - 1;
   if (prevM === 0) { prevM = 12; prevY--; }
@@ -4076,18 +4076,20 @@ async function _fetchPrevMonthData(userId, y, m) {
   try {
     const entries = await loadBudgetFromSupabase(userId, prevKey);
     const shift = _collectShiftsForMonth(prevY, prevM);
-    let totalIncome = shift.totalShiftPay, totalExpense = 0;
+    const shiftPay = shift.totalShiftPay;
+    let manualIncome = 0, totalExpense = 0;
     const expCatSums = {}, incCatSums = {};
     entries.forEach(en => {
       if (en.type === 'income') {
-        totalIncome += en.amount;
+        manualIncome += en.amount;
         incCatSums[en.catId] = (incCatSums[en.catId] || 0) + en.amount;
       } else {
         totalExpense += en.amount;
         expCatSums[en.catId] = (expCatSums[en.catId] || 0) + en.amount;
       }
     });
-    return { balance: totalIncome - totalExpense, expCatSums, incCatSums, totalIncome, totalExpense };
+    const totalIncome = shiftPay + manualIncome;
+    return { balance: totalIncome - totalExpense, expCatSums, incCatSums, totalIncome, totalExpense, shiftPay, manualIncome };
   } catch (e) {
     return empty;
   }
@@ -4258,24 +4260,39 @@ function renderBudgetPanel() {
   if (monthLabel) monthLabel.textContent = MONTHS_INIT[m - 1] + ' ' + y;
 
   // ── Carryover from previous month（黒字・赤字どちらも反映、シフト給与は前月 balance に内包） ──
-  var prevMonthBalance = bs.prevMonthBalance || 0;
-  var carryoverEntry = null;
-  if (prevMonthBalance !== 0) {
-    var pmY = m === 1 ? y - 1 : y, pmM = m === 1 ? 12 : m - 1;
-    carryoverEntry = {
-      id: '_carryover',
+  var prevDataLocal  = bs.prevMonthData || { shiftPay: 0, manualIncome: 0, totalExpense: 0 };
+  var prevShiftPay   = prevDataLocal.shiftPay || 0;
+  var prevManualBal  = (prevDataLocal.manualIncome || 0) - (prevDataLocal.totalExpense || 0);
+  var prevMonthBalance = prevShiftPay + prevManualBal;             // \u4E92\u63DB: \u5408\u8A08\u306F\u5909\u3048\u306A\u3044
+  var pmY = m === 1 ? y - 1 : y, pmM = m === 1 ? 12 : m - 1;
+  var carryoverEntries = [];
+  if (prevShiftPay > 0) {
+    carryoverEntries.push({
+      id: '_carryover_shift',
       type: 'income',
       catId: '_carryover',
-      amount: prevMonthBalance,                                    // \u7B26\u53F7\u4ED8\u304D
-      memo: pmY + '\u5E74' + pmM + '\u6708\u306E\u53CE\u652F\u7E70\u8D8A',
+      amount: prevShiftPay,
+      memo: pmY + '\u5E74' + pmM + '\u6708\u306E\u30D0\u30A4\u30C8\u4EE3',
       date: monthKey + '-01',
-      _isCarryover: true
-    };
+      _isCarryover: true,
+      _carryoverKind: 'shift'
+    });
+  }
+  if (prevManualBal !== 0) {
+    carryoverEntries.push({
+      id: '_carryover_manual',
+      type: 'income',
+      catId: '_carryover',
+      amount: prevManualBal,                                       // \u7B26\u53F7\u4ED8\u304D
+      memo: pmY + '\u5E74' + pmM + '\u6708\u306E\u624B\u52D5\u53CE\u652F',
+      date: monthKey + '-01',
+      _isCarryover: true,
+      _carryoverKind: 'manual'
+    });
   }
 
   // ── Merge manual entries + carryover (シフト個別エントリは出さない) ──
-  var allEntries = entries.slice();
-  if (carryoverEntry) allEntries.push(carryoverEntry);
+  var allEntries = entries.slice().concat(carryoverEntries);
 
   var sorted = allEntries.slice().sort(function(a, b) {
     if (a.date !== b.date) return b.date.localeCompare(a.date);
