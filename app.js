@@ -4067,9 +4067,10 @@ function _budgetMonthKey() {
   return `${y}-${_pad2(m + 1)}`;
 }
 
-async function _fetchPrevMonthData(userId, y, m) {
-  const empty = { balance: 0, expCatSums: {}, incCatSums: {}, totalIncome: 0, totalExpense: 0, shiftPay: 0, manualIncome: 0 };
-  if (!userId || userId === 'anon') return empty;
+async function _fetchPrevMonthData(userId, y, m, depth) {
+  if (depth == null) depth = 12;                       // 最大12ヶ月遡る（1年分）
+  const empty = { balance: 0, expCatSums: {}, incCatSums: {}, totalIncome: 0, totalExpense: 0, shiftPay: 0, manualIncome: 0, priorCarryover: 0 };
+  if (!userId || userId === 'anon' || depth <= 0) return empty;
   let prevY = y, prevM = m - 1;
   if (prevM === 0) { prevM = 12; prevY--; }
   const prevKey = `${prevY}-${_pad2(prevM)}`;
@@ -4088,8 +4089,14 @@ async function _fetchPrevMonthData(userId, y, m) {
         expCatSums[en.catId] = (expCatSums[en.catId] || 0) + en.amount;
       }
     });
-    const totalIncome = shiftPay + manualIncome;
-    return { balance: totalIncome - totalExpense, expCatSums, incCatSums, totalIncome, totalExpense, shiftPay, manualIncome };
+    // 前々月以前の繰越を取得（深さを 1 減らして再帰）
+    let priorCarryover = 0;
+    if (depth > 1) {
+      const prior = await _fetchPrevMonthData(userId, prevY, prevM, depth - 1);
+      priorCarryover = prior.balance;
+    }
+    const totalIncome = shiftPay + manualIncome + priorCarryover;
+    return { balance: totalIncome - totalExpense, expCatSums, incCatSums, totalIncome, totalExpense, shiftPay, manualIncome, priorCarryover };
   } catch (e) {
     return empty;
   }
@@ -4260,10 +4267,11 @@ function renderBudgetPanel() {
   if (monthLabel) monthLabel.textContent = MONTHS_INIT[m - 1] + ' ' + y;
 
   // ── Carryover from previous month（黒字・赤字どちらも反映、シフト給与は前月 balance に内包） ──
-  var prevDataLocal  = bs.prevMonthData || { shiftPay: 0, manualIncome: 0, totalExpense: 0 };
-  var prevShiftPay   = prevDataLocal.shiftPay || 0;
-  var prevManualBal  = (prevDataLocal.manualIncome || 0) - (prevDataLocal.totalExpense || 0);
-  var prevMonthBalance = prevShiftPay + prevManualBal;             // \u4E92\u63DB: \u5408\u8A08\u306F\u5909\u3048\u306A\u3044
+  var prevDataLocal      = bs.prevMonthData || { shiftPay: 0, manualIncome: 0, totalExpense: 0, priorCarryover: 0 };
+  var prevShiftPay       = prevDataLocal.shiftPay || 0;
+  var prevManualBal      = (prevDataLocal.manualIncome || 0) - (prevDataLocal.totalExpense || 0);
+  var prevPriorCarryover = prevDataLocal.priorCarryover || 0;      // \u524D\u3005\u6708\u4EE5\u524D\u306E\u7D2F\u7A4D\u7E70\u8D8A
+  var prevMonthBalance   = prevShiftPay + prevManualBal + prevPriorCarryover;  // \u4E92\u63DB: \u5408\u8A08\u306F _fetchPrevMonthData.balance \u3068\u4E00\u81F4
   var pmY = m === 1 ? y - 1 : y, pmM = m === 1 ? 12 : m - 1;
   var carryoverEntries = [];
   if (prevShiftPay > 0) {
@@ -4288,6 +4296,18 @@ function renderBudgetPanel() {
       date: monthKey + '-01',
       _isCarryover: true,
       _carryoverKind: 'manual'
+    });
+  }
+  if (prevPriorCarryover !== 0) {
+    carryoverEntries.push({
+      id: '_carryover_prior',
+      type: 'income',
+      catId: '_carryover',
+      amount: prevPriorCarryover,                                  // 符号付き
+      memo: pmY + '年' + pmM + '月以前からの繰越',
+      date: monthKey + '-01',
+      _isCarryover: true,
+      _carryoverKind: 'prior'
     });
   }
 
