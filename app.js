@@ -4075,7 +4075,7 @@ async function _fetchPrevMonthData(userId, y, m) {
   const prevKey = `${prevY}-${_pad2(prevM)}`;
   try {
     const entries = await loadBudgetFromSupabase(userId, prevKey);
-    const shift = _collectPrevMonthShifts(prevY, prevM);
+    const shift = _collectShiftsForMonth(prevY, prevM);
     let totalIncome = shift.totalShiftPay, totalExpense = 0;
     const expCatSums = {}, incCatSums = {};
     entries.forEach(en => {
@@ -4208,10 +4208,10 @@ function _updateBudgetCatOptions() {
   catEl.innerHTML = cats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
 }
 
-function _collectPrevMonthShifts(y, m) {
-  // y, m are 1-based (from monthKey). Collect shifts from the PREVIOUS month.
-  var prevDate = new Date(y, m - 2, 1); // m-1 = current 0-based, m-2 = prev 0-based
-  var pY = prevDate.getFullYear(), pM = prevDate.getMonth(); // 0-based month
+function _collectShiftsForMonth(y, m) {
+  // y, m are 1-based. Collect shifts EARNED in (y, m) itself (発生主義).
+  var monthDate = new Date(y, m - 1, 1);
+  var pY = monthDate.getFullYear(), pM = monthDate.getMonth(); // 0-based month
   var dim = new Date(pY, pM + 1, 0).getDate();
   var shiftEntries = [];
   var totalShiftPay = 0;
@@ -4243,7 +4243,7 @@ function _collectPrevMonthShifts(y, m) {
     }
   }
   return { shiftEntries: shiftEntries, totalShiftPay: totalShiftPay, perCat: perCat,
-           prevYear: pY, prevMonth: pM };
+           year: pY, month: pM };
 }
 
 function renderBudgetPanel() {
@@ -4257,29 +4257,24 @@ function renderBudgetPanel() {
   var monthLabel = document.getElementById('js-budget-month-label');
   if (monthLabel) monthLabel.textContent = MONTHS_INIT[m - 1] + ' ' + y;
 
-  // ── Collect shift earnings from the PREVIOUS month ──
-  var shift = _collectPrevMonthShifts(y, m);
-  var shiftEntries = shift.shiftEntries;
-  var totalShiftPay = shift.totalShiftPay;
-
-  // ── Carryover from previous month ──
+  // ── Carryover from previous month（黒字・赤字どちらも反映、シフト給与は前月 balance に内包） ──
   var prevMonthBalance = bs.prevMonthBalance || 0;
   var carryoverEntry = null;
-  if (prevMonthBalance > 0) {
+  if (prevMonthBalance !== 0) {
     var pmY = m === 1 ? y - 1 : y, pmM = m === 1 ? 12 : m - 1;
     carryoverEntry = {
       id: '_carryover',
       type: 'income',
       catId: '_carryover',
-      amount: prevMonthBalance,
-      memo: pmY + '\u5E74' + pmM + '\u6708\u306E\u7E70\u8D8A',
+      amount: prevMonthBalance,                                    // \u7B26\u53F7\u4ED8\u304D
+      memo: pmY + '\u5E74' + pmM + '\u6708\u306E\u53CE\u652F\u7E70\u8D8A',
       date: monthKey + '-01',
       _isCarryover: true
     };
   }
 
-  // ── Merge manual entries + shift entries + carryover ──
-  var allEntries = entries.concat(shiftEntries);
+  // ── Merge manual entries + carryover (シフト個別エントリは出さない) ──
+  var allEntries = entries.slice();
   if (carryoverEntry) allEntries.push(carryoverEntry);
 
   var sorted = allEntries.slice().sort(function(a, b) {
@@ -4294,7 +4289,7 @@ function renderBudgetPanel() {
   });
 
   // Summary
-  var totalIncome  = totalShiftPay + (prevMonthBalance > 0 ? prevMonthBalance : 0);
+  var totalIncome  = prevMonthBalance;   // シフト分は前月の balance に内包済み、繰越で反映
   var totalExpense = 0;
   var catSums = {};
 
@@ -4356,31 +4351,8 @@ function renderBudgetPanel() {
       catBreakdown += '</div>';
     }
 
-    // Shift earnings detail card
+    // \u30B7\u30D5\u30C8\u7D66\u4E0E\u306F \u30B5\u30E9\u30EA\u30FC\u30B5\u30DE\u30EA\u30FC\uFF08\u30B5\u30A4\u30C9\u30D0\u30FC\uFF09\u3067\u8868\u793A\u3059\u308B\u305F\u3081\u5BB6\u8A08\u7C3F\u30D1\u30CD\u30EB\u306B\u306F\u51FA\u3055\u306A\u3044
     var shiftDetail = '';
-    if (totalShiftPay > 0) {
-      var prevMLabel = (shift.prevMonth + 1) + '\u6708';
-      var shiftLines = '';
-      var sCats = shiftCats();
-      for (var si = 0; si < sCats.length; si++) {
-        var sc2 = sCats[si];
-        var inf = shift.perCat[sc2.id];
-        if (!inf) continue;
-        shiftLines +=
-          '<div class="budget-shift-row">' +
-          '<span class="budget-shift-dot" style="background:' + sc2.color + '"></span>' +
-          '<span class="budget-shift-name">' + escHtml(sc2.name) + '</span>' +
-          '<span class="budget-shift-hours">' + fmtMin(inf.workMinutes) + '</span>' +
-          '<span class="budget-shift-amount">' + fmtYen(inf.pay) + '</span></div>';
-      }
-      shiftDetail =
-        '<div class="budget-shift-summary">' +
-        '<div class="budget-shift-header">' +
-        '<span class="budget-shift-icon">\u23F1</span>' +
-        '<span class="budget-shift-label">\u30A2\u30EB\u30D0\u30A4\u30C8\u53CE\u5165\uFF08' + prevMLabel + '\u5206\uFF09</span>' +
-        '<span class="budget-shift-total">' + fmtYen(totalShiftPay) + '</span></div>' +
-        shiftLines + '</div>';
-    }
 
     els.summaryEl.innerHTML =
       '<div class="budget-summary-grid">' +
@@ -4439,12 +4411,21 @@ function renderBudgetPanel() {
         gIcon = gCat.icon; gCatName = gCat.name;
       }
       var autoBadge = isShiftEntry ? '\u81EA\u52D5' : isCarryover ? '\u7E70\u8D8A' : '';
+      // \u7E70\u8D8A\u306F\u7B26\u53F7\u4ED8\u304D\uFF1A\u8CA0\u306E\u7E70\u8D8A\u306F\u8D64\u5B57\u30B9\u30BF\u30A4\u30EB\u3067\u300C\u2212\u00A5X\u300D\u3068\u8868\u793A
+      var displaySign, amountCls;
+      if (isCarryover) {
+        displaySign = gen.amount >= 0 ? '+' : '\u2212';
+        amountCls   = gen.amount >= 0 ? 'is-income' : 'is-expense';
+      } else {
+        displaySign = isInc ? '+' : '-';
+        amountCls   = isInc ? 'is-income' : 'is-expense';
+      }
       html += '<div class="budget-entry ' + (isInc ? 'is-income' : 'is-expense') + (isAuto ? ' is-auto' : '') + '" data-budget-id="' + gen.id + '">' +
         '<span class="budget-entry-icon' + (isAuto ? ' is-shift-icon' : '') + '">' + gIcon + '</span>' +
         '<div class="budget-entry-body"><span class="budget-entry-cat">' + gCatName + (isAuto ? '<span class="budget-auto-badge">' + autoBadge + '</span>' : '') + '</span>' +
         (gen.memo ? '<span class="budget-entry-memo">' + escapeHtml(gen.memo) + '</span>' : '') +
         '</div>' +
-        '<span class="budget-entry-amount ' + (isInc ? 'is-income' : 'is-expense') + '">' + (isInc ? '+' : '-') + fmtYen(gen.amount) + '</span>' +
+        '<span class="budget-entry-amount ' + amountCls + '">' + displaySign + fmtYen(Math.abs(gen.amount)) + '</span>' +
         (isAuto ? '' : '<button class="budget-entry-del" type="button" title="\u524A\u9664" aria-label="\u524A\u9664">\u2715</button>') +
         '</div>';
     }
