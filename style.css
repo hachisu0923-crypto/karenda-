@@ -3829,6 +3829,72 @@ input  { font-family: inherit; }
 
 
 /* ============================================================
+   BUDGET: 残業バンク情報カード（家計簿パネル統合）
+   ============================================================ */
+
+.budget-overtime-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-soft);
+}
+.budget-overtime-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.budget-overtime-icon { font-size: 14px; }
+.budget-overtime-label, .budget-overtime-cashout-label {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+.budget-overtime-bank, .budget-overtime-cashout {
+  font-weight: 700;
+  color: var(--color-accent-orange);
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', monospace;
+}
+.budget-overtime-sep {
+  color: var(--color-border-strong);
+  opacity: 0.6;
+}
+.budget-overtime-actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.budget-overtime-actions button {
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.budget-overtime-actions button:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-strong);
+}
+.budget-overtime-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+@media (max-width: 720px) {
+  .budget-overtime-card { flex-direction: column; align-items: stretch; }
+  .budget-overtime-actions { justify-content: flex-end; }
+}
+
+/* ============================================================
    BUDGET: auto badge (繰越用)
    ============================================================ */
 

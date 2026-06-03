@@ -1132,7 +1132,7 @@ function renderSalarySummary() {
     const actions = document.createElement('div');
     actions.className = 'salary-overtime-actions';
     actions.innerHTML = `
-      <button id="js-overtime-cashout-open" type="button" ${anyBankBalance ? '' : 'disabled'}>⏱ 残業を使う</button>
+      <button id="js-overtime-cashout-open" type="button" ${anyBankBalance ? '' : 'disabled'}>⏱ 残業を振替</button>
       <button id="js-overtime-history-open" type="button">📊 履歴</button>`;
     box.appendChild(actions);
     document.getElementById('js-overtime-cashout-open').addEventListener('click', openOvertimeCashoutModal);
@@ -1904,7 +1904,7 @@ function openOvertimeCashoutModal() {
   document.getElementById('js-overtime-cashout-warning').style.display = 'none';
   // 計上先の月を明示（curDate ベース、挙動は変えない）
   const sub = document.getElementById('js-overtime-cashout-sub');
-  if (sub) sub.textContent = `${curDate.getFullYear()}年${curDate.getMonth()+1}月 の給料に計上します`;
+  if (sub) sub.textContent = `${curDate.getFullYear()}年${curDate.getMonth()+1}月 の給料に振替えます`;
   renderOvertimeCashoutCatChips();
   updateOvertimeCashoutPreview();
   openOverlay('js-overtime-cashout-overlay');
@@ -4354,12 +4354,45 @@ function renderBudgetPanel() {
     // \u30B7\u30D5\u30C8\u7D66\u4E0E\u306F \u30B5\u30E9\u30EA\u30FC\u30B5\u30DE\u30EA\u30FC\uFF08\u30B5\u30A4\u30C9\u30D0\u30FC\uFF09\u3067\u8868\u793A\u3059\u308B\u305F\u3081\u5BB6\u8A08\u7C3F\u30D1\u30CD\u30EB\u306B\u306F\u51FA\u3055\u306A\u3044
     var shiftDetail = '';
 
+    // \u6B8B\u696D\u30D0\u30F3\u30AF\u60C5\u5831\u30AB\u30FC\u30C9\uFF08\u5BB6\u8A08\u6587\u8108\u3067\u898B\u3048\u308B\u5316\uFF09
+    var overtimeCard = '';
+    var sCats = shiftCats();
+    var totalBankMin = 0;
+    var totalCashoutYen = 0;
+    sCats.forEach(function(sc) {
+      totalBankMin += getOvertimeBank(sc.id);
+      totalCashoutYen += monthlyCashoutPayByCat(sc.id, y, m - 1); // m \u306F 1-based\u3001\u95A2\u6570\u306F 0-based \u6708
+    });
+    if (totalBankMin > 0 || totalCashoutYen > 0) {
+      overtimeCard =
+        '<div class="budget-overtime-card">' +
+        '<div class="budget-overtime-info">' +
+        '<span class="budget-overtime-icon">\u23F1</span>' +
+        '<span class="budget-overtime-label">\u6B8B\u696D\u30D0\u30F3\u30AF</span>' +
+        '<span class="budget-overtime-bank">' + formatMinToHHMM(totalBankMin) + '</span>' +
+        '<span class="budget-overtime-sep">|</span>' +
+        '<span class="budget-overtime-cashout-label">\u632F\u66FF\u6E08</span>' +
+        '<span class="budget-overtime-cashout">' + fmtYen(totalCashoutYen) + '</span>' +
+        '</div>' +
+        '<div class="budget-overtime-actions">' +
+        '<button type="button" id="js-budget-overtime-cashout-open"' + (totalBankMin > 0 ? '' : ' disabled') + '>\u23F1 \u632F\u66FF</button>' +
+        '<button type="button" id="js-budget-overtime-history-open">\uD83D\uDCCA \u5C65\u6B74</button>' +
+        '</div>' +
+        '</div>';
+    }
+
     els.summaryEl.innerHTML =
       '<div class="budget-summary-grid">' +
       '<div class="budget-summary-card is-income"><div class="budget-summary-label">\u53CE\u5165</div><div class="budget-summary-value">' + fmtYen(totalIncome) + '</div>' + _vsBadge(totalIncome, prevData.totalIncome, 'up') + '</div>' +
       '<div class="budget-summary-card is-expense"><div class="budget-summary-label">\u652F\u51FA</div><div class="budget-summary-value">' + fmtYen(totalExpense) + '</div>' + _vsBadge(totalExpense, prevData.totalExpense, 'down') + '</div>' +
       '<div class="budget-summary-card is-balance ' + (balance >= 0 ? 'is-positive' : 'is-negative') + '"><div class="budget-summary-label">\u53CE\u652F</div><div class="budget-summary-value">' + (balance >= 0 ? '+' : '') + fmtYen(balance) + '</div>' + _vsBadge(balance, prevData.balance, 'up') + '</div>' +
-      '</div>' + shiftDetail + catBreakdown;
+      '</div>' + overtimeCard + shiftDetail + catBreakdown;
+
+    // \u6B8B\u696D\u30D0\u30F3\u30AF\u30AB\u30FC\u30C9\u5185\u306E\u30DC\u30BF\u30F3\u306B\u65E2\u5B58\u30E2\u30FC\u30C0\u30EB\u95A2\u6570\u3092\u7D10\u4ED8\u3051
+    var cBtn = document.getElementById('js-budget-overtime-cashout-open');
+    var hBtn = document.getElementById('js-budget-overtime-history-open');
+    if (cBtn) cBtn.addEventListener('click', openOvertimeCashoutModal);
+    if (hBtn) hBtn.addEventListener('click', openOvertimeHistoryModal);
   }
 
   // Render list
