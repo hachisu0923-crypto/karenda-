@@ -2642,15 +2642,14 @@ applyTheme(isDark);
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
-// ── Mobile: 画面下端から上スワイプで Properties パネルを展開 ─────────────────
+// ── Mobile: Properties パネル内のどこからでも上スワイプで展開 ───────────────
 (function initBottomEdgeSwipe() {
   const panel = document.querySelector('.bottom-panel');
   if (!panel) return;
-  const EDGE_ZONE = 22;          // 画面下端から 22px 以内で発動
   const SWIPE_THRESHOLD = 60;    // 上方向の必要移動量
   const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
 
-  let startX = 0, startY = 0, tracking = false;
+  let startX = 0, startY = 0, tracking = false, scrollTarget = null, startScrollTop = 0;
 
   document.addEventListener('touchstart', e => {
     if (!isMobile()) return;
@@ -2658,9 +2657,14 @@ applyTheme(isDark);
     if (document.querySelector('.overlay.is-open')) { tracking = false; return; }
     // 既に展開中なら何もしない（collapse は既存ハンドルで対応）
     if (panel.classList.contains('is-expanded')) { tracking = false; return; }
+    // パネル外は無視（カレンダー本体・サイドバーへの影響を防ぐ）
+    if (!panel.contains(e.target)) { tracking = false; return; }
+    // ハンドルは既存の専用ハンドラに委ねる
+    if (e.target.closest('.bp-swipe-handle')) { tracking = false; return; }
     const t = e.touches[0];
-    const fromBottomEdge = (window.innerHeight - t.clientY) <= EDGE_ZONE;
-    if (!fromBottomEdge) { tracking = false; return; }
+    // スクロール可能な祖先（.bp-section）の現在スクロール位置を記録
+    scrollTarget = e.target.closest('.bp-section');
+    startScrollTop = scrollTarget ? scrollTarget.scrollTop : 0;
     startX = t.clientX;
     startY = t.clientY;
     tracking = true;
@@ -2672,6 +2676,12 @@ applyTheme(isDark);
     const dx = t.clientX - startX;
     const dy = startY - t.clientY;                                // 上向きで正
     if (dy < SWIPE_THRESHOLD || dy <= Math.abs(dx) * 1.2) return;
+    // スクロール領域がスクロールされていた場合は展開発火を抑制（中身のスクロール優先）
+    const currentScroll = scrollTarget ? scrollTarget.scrollTop : 0;
+    if (scrollTarget && (startScrollTop > 0 || currentScroll > 0)) {
+      tracking = false;
+      return;
+    }
     tracking = false;
     panel.classList.add('is-expanded');
   }, { passive: true });
