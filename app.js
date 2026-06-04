@@ -4117,6 +4117,36 @@ async function loadBudgetFromSupabase(userId, monthKey) {
   }
 }
 
+async function loadBudgetMonthsFromSupabase(userId, monthKeys) {
+  if (!db || !userId || userId === 'anon') return [];
+  if (!monthKeys || monthKeys.length === 0) return [];
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await db
+      .from('budget_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .in('month_key', monthKeys);
+    if (error) throw error;
+    setSyncStatus('synced');
+    return (data || []).map(r => ({
+      id:        r.entry_id,
+      _dbId:     r.id,
+      type:      r.type,
+      catId:     r.cat_id,
+      amount:    r.amount,
+      memo:      r.memo || '',
+      date:      r.date,
+      monthKey:  r.month_key,
+      createdAt: new Date(r.created_at).getTime()
+    }));
+  } catch (e) {
+    console.error('Budget months load error:', e);
+    setSyncStatus('error');
+    return [];
+  }
+}
+
 async function addBudgetToSupabase(entry) {
   if (!currentUser) return;
   setSyncStatus('syncing');
@@ -4166,16 +4196,36 @@ async function _fetchPrevMonthData(userId, y, m, depth) {
   if (depth == null) depth = 12;                       // 最大12ヶ月遡る（1年分）
   const empty = { balance: 0, expCatSums: {}, incCatSums: {}, totalIncome: 0, totalExpense: 0, shiftPay: 0, manualIncome: 0, priorCarryover: 0 };
   if (!userId || userId === 'anon' || depth <= 0) return empty;
-  let prevY = y, prevM = m - 1;
-  if (prevM === 0) { prevM = 12; prevY--; }
-  const prevKey = `${prevY}-${_pad2(prevM)}`;
+  // 対象月キー（古い順）を作る
+  const monthKeys = [];
+  let curY = y, curM = m - 1;
+  if (curM === 0) { curM = 12; curY--; }
+  for (let i = 0; i < depth; i++) {
+    monthKeys.unshift(`${curY}-${_pad2(curM)}`);
+    curM--;
+    if (curM === 0) { curM = 12; curY--; }
+  }
+  let allEntries = [];
   try {
-    const entries = await loadBudgetFromSupabase(userId, prevKey);
-    const shift = _collectShiftsForMonth(prevY, prevM);
+    allEntries = await loadBudgetMonthsFromSupabase(userId, monthKeys);
+  } catch (e) {
+    return empty;
+  }
+  const byMonth = {};
+  monthKeys.forEach(k => { byMonth[k] = []; });
+  allEntries.forEach(en => { if (byMonth[en.monthKey]) byMonth[en.monthKey].push(en); });
+  // 古い月から複利的に積み上げ
+  let priorCarryover = 0;
+  let last = empty;
+  for (let i = 0; i < monthKeys.length; i++) {
+    const key = monthKeys[i];
+    const parts = key.split('-');
+    const py = +parts[0], pm = +parts[1];
+    const shift = _collectShiftsForMonth(py, pm);
     const shiftPay = shift.totalShiftPay;
     let manualIncome = 0, totalExpense = 0;
     const expCatSums = {}, incCatSums = {};
-    entries.forEach(en => {
+    byMonth[key].forEach(en => {
       if (en.type === 'income') {
         manualIncome += en.amount;
         incCatSums[en.catId] = (incCatSums[en.catId] || 0) + en.amount;
@@ -4184,17 +4234,12 @@ async function _fetchPrevMonthData(userId, y, m, depth) {
         expCatSums[en.catId] = (expCatSums[en.catId] || 0) + en.amount;
       }
     });
-    // 前々月以前の繰越を取得（深さを 1 減らして再帰）
-    let priorCarryover = 0;
-    if (depth > 1) {
-      const prior = await _fetchPrevMonthData(userId, prevY, prevM, depth - 1);
-      priorCarryover = prior.balance;
-    }
     const totalIncome = shiftPay + manualIncome + priorCarryover;
-    return { balance: totalIncome - totalExpense, expCatSums, incCatSums, totalIncome, totalExpense, shiftPay, manualIncome, priorCarryover };
-  } catch (e) {
-    return empty;
+    const balance = totalIncome - totalExpense;
+    last = { balance, expCatSums, incCatSums, totalIncome, totalExpense, shiftPay, manualIncome, priorCarryover };
+    priorCarryover = balance;
   }
+  return last;
 }
 
 async function _syncBudgetMonth() {
@@ -4202,12 +4247,13 @@ async function _syncBudgetMonth() {
   const mk = _budgetMonthKey();
   if (_budgetState.monthKey !== mk) {
     _budgetState.monthKey = mk;
-    const parts0 = mk.split('-');
     _budgetState.entries = await loadBudgetFromSupabase(_budgetState.userId, mk);
-    const pmd = await _fetchPrevMonthData(_budgetState.userId, +parts0[0], +parts0[1]);
-    _budgetState.prevMonthBalance = pmd.balance;
-    _budgetState.prevMonthData = pmd;
   }
+  // 常に prevMonthData を再フェッチ（一括取得 1 query でコスト一定、過去月編集の即時反映を保証）
+  const parts0 = mk.split('-');
+  const pmd = await _fetchPrevMonthData(_budgetState.userId, +parts0[0], +parts0[1]);
+  _budgetState.prevMonthBalance = pmd.balance;
+  _budgetState.prevMonthData = pmd;
 }
 
 function getBudgetCat(catId) {
