@@ -2689,6 +2689,53 @@ applyTheme(isDark);
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
+// ── Mobile: Properties 展開中の下スワイプで縮小 & 月間カレンダーに戻る ───────
+(function initBottomPanelCollapseSwipe() {
+  const panel = document.querySelector('.bottom-panel');
+  if (!panel) return;
+  const SWIPE_THRESHOLD = 60;
+  const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
+
+  let startX = 0, startY = 0, tracking = false, scrollTarget = null, startScrollTop = 0;
+
+  document.addEventListener('touchstart', e => {
+    if (!isMobile()) return;
+    if (document.querySelector('.overlay.is-open')) { tracking = false; return; }
+    // 展開中のみ有効
+    if (!panel.classList.contains('is-expanded')) { tracking = false; return; }
+    // パネル外は無視
+    if (!panel.contains(e.target)) { tracking = false; return; }
+    // ハンドルは既存 .bp-swipe-handle ハンドラに委ねる
+    if (e.target.closest('.bp-swipe-handle')) { tracking = false; return; }
+    const t = e.touches[0];
+    scrollTarget = e.target.closest('.bp-section');
+    startScrollTop = scrollTarget ? scrollTarget.scrollTop : 0;
+    startX = t.clientX;
+    startY = t.clientY;
+    tracking = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!tracking) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;                                // 下向きで正
+    if (dy < SWIPE_THRESHOLD || dy <= Math.abs(dx) * 1.2) return;
+    // スクロール領域がスクロールされていた場合は抑制（スクロール優先）
+    const currentScroll = scrollTarget ? scrollTarget.scrollTop : 0;
+    if (scrollTarget && (startScrollTop > 0 || currentScroll > 0)) {
+      tracking = false;
+      return;
+    }
+    tracking = false;
+    panel.classList.remove('is-expanded');
+    panel.style.height = '';
+    if (typeof switchView === 'function') switchView('month');
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
+})();
+
 // ── iOS Safari ピンチ/ダブルタップ拡大の完全抑止 ────────────────────────
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
   document.addEventListener(ev, e => e.preventDefault(), { passive: false });
@@ -3321,10 +3368,11 @@ function initBottomPanelSwipe() {
     panel.style.transform = '';
 
     if (isExpanded) {
-      // 展開中に下スワイプ → 閉じる
+      // 展開中に下スワイプ → 閉じて月間ビューへ
       if (dy < -80) {
         panel.classList.remove('is-expanded');
         panel.style.height = '';
+        if (typeof switchView === 'function') switchView('month');
       }
     } else {
       // 縮小中に上スワイプ → 展開
