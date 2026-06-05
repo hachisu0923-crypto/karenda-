@@ -1887,6 +1887,156 @@ async function addShift() {
   renderAll();
 }
 
+// ── Repeat / copy to weekdays ─────────────────────────────────────────────────
+
+// 基準日からその月末までで、選択曜日に該当する dateKey 群を返す
+function _datesForWeekdaysInMonth(baseKey, dowSet, excludeBase) {
+  const parts = baseKey.split('-').map(Number);   // [y, m(1-based), d]
+  const by = parts[0], bm = parts[1], bd = parts[2];
+  const lastDay = new Date(by, bm, 0).getDate();  // 当月末日
+  const keys = [];
+  for (let d = bd; d <= lastDay; d++) {
+    const dow = new Date(by, bm - 1, d).getDay();
+    if (!dowSet.has(dow)) continue;
+    const key = dateKey(by, bm - 1, d);           // dateKey は 0-based 月
+    if (excludeBase && key === baseKey) continue;
+    keys.push(key);
+  }
+  return keys;
+}
+
+// 予定/シフトのクローン（_dbId は引き継がない）
+function _cloneEv(src) {
+  if (isShift(src.catId)) {
+    return { title:'', catId:src.catId, shiftStart:src.shiftStart, shiftEnd:src.shiftEnd,
+             breakMinutes:src.breakMinutes ?? 0, overtimeMinutes:src.overtimeMinutes ?? 0 };
+  }
+  return { title:src.title ?? '', time:src.time || '', timeEnd:src.timeEnd || '', catId:src.catId };
+}
+
+// 各日付に clone を作成して保存
+async function _copyEventToDates(srcEv, dateKeys) {
+  for (const key of dateKeys) {
+    const clone = _cloneEv(srcEv);
+    if (!events[key]) events[key] = [];
+    events[key].push(clone);
+    await addEventToSupabase(key, clone);          // detectEventColumns はキャッシュ済
+  }
+}
+
+let _repeatSrcEv = null, _repeatBaseKey = null, _repeatExcludeBase = false;
+const _repeatDows = new Set();
+
+function _repeatSummary(ev) {
+  const cat = getCat(ev.catId) || { name:'?' };
+  if (isShift(ev.catId)) return `${cat.name}　${ev.shiftStart || ''}–${ev.shiftEnd || ''}`;
+  const t = ev.time ? `　${ev.time}${ev.timeEnd ? '–' + ev.timeEnd : ''}` : '';
+  return `${ev.title || ''}${t}`;
+}
+
+function openRepeatPicker(srcEv, opts) {
+  _repeatSrcEv = srcEv;
+  _repeatBaseKey = selectedKey;
+  _repeatExcludeBase = !!(opts && opts.excludeBase);
+  _repeatDows.clear();
+  const p = selectedKey.split('-').map(Number);
+  _repeatDows.add(new Date(p[0], p[1]-1, p[2]).getDay());   // 既定で基準日の曜日
+  document.getElementById('js-repeat-modal-sub').textContent = _repeatSummary(srcEv);
+  _renderRepeatDowChips();
+  _updateRepeatCount();
+  openOverlay('js-repeat-overlay');
+}
+
+function _renderRepeatDowChips() {
+  const list = document.getElementById('js-repeat-dow-list');
+  list.innerHTML = '';
+  ['日','月','火','水','木','金','土'].forEach((label, dow) => {
+    const chip = document.createElement('div');
+    chip.className = 'dow-chip' + (_repeatDows.has(dow) ? ' is-selected' : '');
+    chip.dataset.dow = dow;
+    chip.textContent = label;
+    chip.addEventListener('click', () => {
+      if (_repeatDows.has(dow)) _repeatDows.delete(dow); else _repeatDows.add(dow);
+      chip.classList.toggle('is-selected');
+      _updateRepeatCount();
+    });
+    list.appendChild(chip);
+  });
+}
+
+function _updateRepeatCount() {
+  const n = _datesForWeekdaysInMonth(_repeatBaseKey, _repeatDows, _repeatExcludeBase).length;
+  document.getElementById('js-repeat-count').textContent = `${n} 日に追加します`;
+}
+
+document.getElementById('js-repeat-confirm-btn').addEventListener('click', async () => {
+  if (!_repeatSrcEv) return;
+  const keys = _datesForWeekdaysInMonth(_repeatBaseKey, _repeatDows, _repeatExcludeBase);
+  if (!keys.length) { alert('対象の曜日がありません。'); return; }
+  await _copyEventToDates(_repeatSrcEv, keys);
+  closeOverlay('js-repeat-overlay');
+  closeOverlay('js-edit-overlay');          // 編集経由なら閉じる（未オープンなら no-op）
+  renderExistingEvents();
+  renderAll();
+});
+
+function closeRepeatPicker(){ closeOverlay('js-repeat-overlay'); _repeatSrcEv = null; }
+document.getElementById('js-repeat-modal-close').addEventListener('click', closeRepeatPicker);
+document.getElementById('js-repeat-cancel-btn').addEventListener('click', closeRepeatPicker);
+document.getElementById('js-repeat-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('js-repeat-overlay')) closeRepeatPicker();
+});
+
+// 導線① 予定タブ：曜日を指定して追加
+document.getElementById('js-ev-repeat-btn').addEventListener('click', () => {
+  const title = document.getElementById('js-ev-title').value.trim();
+  if (!title) { document.getElementById('js-ev-title').focus(); return; }
+  const ev = {
+    title,
+    time:    document.getElementById('js-ev-time-start').value,
+    timeEnd: document.getElementById('js-ev-time-end').value,
+    catId:   selectedCatId
+  };
+  openRepeatPicker(ev, { excludeBase:false });
+});
+
+// 導線② シフトタブ：曜日を指定して追加
+document.getElementById('js-shift-repeat-btn').addEventListener('click', () => {
+  const start = document.getElementById('js-shift-start').value;
+  const end   = document.getElementById('js-shift-end').value;
+  const brk   = parseInt(document.getElementById('js-shift-break').value) || 0;
+  const ot    = parseHHMMtoMin(document.getElementById('js-shift-overtime').value);
+  const cat   = shiftCats()[0];
+  if (!start || !end) { document.getElementById('js-shift-start').focus(); return; }
+  if (!cat) return;
+  const ev = { title:'', catId:cat.id, shiftStart:start, shiftEnd:end, breakMinutes:brk, overtimeMinutes:ot };
+  openRepeatPicker(ev, { excludeBase:false });
+});
+
+// 導線③ 編集モーダル：他の日にコピー（フォームの現在値を元にする）
+document.getElementById('js-edit-copy-btn').addEventListener('click', () => {
+  if (!editingEv) return;
+  let srcEv;
+  if (isShift(editingEv.catId)) {
+    const start = document.getElementById('js-edit-shift-start').value;
+    const end   = document.getElementById('js-edit-shift-end').value;
+    const brk   = parseInt(document.getElementById('js-edit-shift-break').value) || 0;
+    const ot    = parseHHMMtoMin(document.getElementById('js-edit-shift-overtime').value);
+    if (!start || !end) { document.getElementById('js-edit-shift-start').focus(); return; }
+    srcEv = { title:'', catId:editingEv.catId, shiftStart:start, shiftEnd:end, breakMinutes:brk, overtimeMinutes:ot };
+  } else {
+    const title = document.getElementById('js-edit-ev-title').value.trim();
+    if (!title) { document.getElementById('js-edit-ev-title').focus(); return; }
+    srcEv = {
+      title,
+      time:    document.getElementById('js-edit-ev-time-start').value,
+      timeEnd: document.getElementById('js-edit-ev-time-end').value,
+      catId:   editingCatId
+    };
+  }
+  openRepeatPicker(srcEv, { excludeBase:true });
+});
+
 // ── Overtime cashout modal ────────────────────────────────────────────────────
 
 let _overtimeCashoutCatId = null;
@@ -2496,7 +2646,7 @@ document.getElementById('js-open-budget-cat-editor').addEventListener('click',op
 document.addEventListener('keydown',e=>{
   // Escapeキーはinput内でもモーダルを閉じられるようにする
   if (e.key==='Escape'){
-    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');
+    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();
     if (document.activeElement) document.activeElement.blur();
     return;
   }

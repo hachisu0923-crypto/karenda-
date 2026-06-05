@@ -422,6 +422,7 @@
           <div class="cat-chip-list" id="js-cat-chip-list"></div>
         </div>
         <button class="btn-primary" id="js-add-event-btn">＋ 追加</button>
+        <button class="btn-secondary" id="js-ev-repeat-btn" style="margin-top:8px;">📅 曜日を指定して追加</button>
       </div>
 
       <!-- Shift form -->
@@ -474,6 +475,7 @@
           <button class="link-btn" id="js-go-to-cat-editor">カテゴリを編集する →</button>
         </div>
         <button class="btn-primary" id="js-add-shift-btn">＋ シフト追加</button>
+        <button class="btn-secondary" id="js-shift-repeat-btn" style="margin-top:8px;">📅 曜日を指定して追加</button>
       </div>
     </div>
   </div>
@@ -558,8 +560,33 @@
 
     </div>
     <div class="modal-footer">
+      <button class="btn-secondary" id="js-edit-copy-btn" style="margin-right:auto;">📋 他の日にコピー</button>
       <button class="btn-secondary" id="js-edit-cancel-btn">キャンセル</button>
       <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-edit-save-btn">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ REPEAT / COPY MODAL ═══════════ -->
+<div class="overlay" id="js-repeat-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-repeat-modal-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-repeat-modal-title">他の日にも入れる</div>
+        <div class="modal-header-sub" id="js-repeat-modal-sub"></div>
+      </div>
+      <button class="modal-close-btn" id="js-repeat-modal-close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">曜日を選ぶ（今月末まで）</label>
+        <div class="dow-chip-list" id="js-repeat-dow-list"></div>
+      </div>
+      <div class="repeat-count" id="js-repeat-count">0 日に追加します</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="js-repeat-cancel-btn">キャンセル</button>
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-repeat-confirm-btn">追加する</button>
     </div>
   </div>
 </div>

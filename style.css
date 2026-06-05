@@ -1685,6 +1685,7 @@ input  { font-family: inherit; }
 .modal-footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 8px 14px 12px;
   border-top: 1px solid var(--color-separator);
@@ -1946,6 +1947,24 @@ input  { font-family: inherit; }
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* weekday picker chips (repeat / copy modal) */
+.dow-chip-list { display: flex; gap: 6px; flex-wrap: nowrap; }
+.dow-chip {
+  flex: 1 1 0; min-width: 34px; text-align: center; padding: 8px 0;
+  border: 1px solid var(--color-border-soft); border-radius: 8px;
+  background: var(--color-bg-input); color: var(--color-text-primary);
+  font-size: 13px; font-weight: 500; cursor: pointer; user-select: none;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+.dow-chip[data-dow="0"] { color: var(--color-danger); }
+.dow-chip[data-dow="6"] { color: #3b82f6; }
+.dow-chip.is-selected,
+.dow-chip.is-selected[data-dow="0"],
+.dow-chip.is-selected[data-dow="6"] {
+  background: var(--color-accent); color: #fff; border-color: var(--color-accent);
+}
+.repeat-count { margin-top: 12px; font-size: 13px; color: var(--color-text-secondary); text-align: center; }
 
 /* template editor rows inside cat editor */
 .tpl-section {
