@@ -2919,8 +2919,10 @@ input  { font-family: inherit; }
   right: 0;
   bottom: 0;
   height: 100vh !important;
+  height: 100dvh !important;
   z-index: 1000;
   border-top: none;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ── Swipe handle (mobile only) ── */
@@ -2994,7 +2996,7 @@ input  { font-family: inherit; }
 /* ── Section wrapper ── */
 .bp-section {
   max-width: 100%;
-  padding: 10px 16px 16px;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
   overflow-x: hidden;
   box-sizing: border-box;
 }
@@ -3843,7 +3845,7 @@ input  { font-family: inherit; }
 
   .budget-entry-del { opacity: 0.6; }
 
-  .budget-list { max-height: 300px; }
+  .budget-list { max-height: none; }
 }
 
 
