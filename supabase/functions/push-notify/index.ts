@@ -22,6 +22,22 @@
  *     );
  *     $$
  *   );
+ *
+ * 予定の「X分前」リマインダー Push を使う場合は、さらに 5 分間隔の cron を登録:
+ * （events.reminder_minutes カラムが必要 → migrations/20260610_reminder_minutes.sql を適用）
+ *
+ *   SELECT cron.schedule(
+ *     'push-notify-reminders',
+ *     '0,5,10,15,20,25,30,35,40,45,50,55 * * * *',  -- 5分間隔
+
+ *     $$
+ *     SELECT net.http_post(
+ *       url := 'https://<project-ref>.supabase.co/functions/v1/push-notify',
+ *       headers := '{"Authorization":"Bearer <CRON_SECRET>","Content-Type":"application/json"}'::jsonb,
+ *       body := '{"mode":"reminders"}'::jsonb
+ *     );
+ *     $$
+ *   );
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -281,6 +297,13 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // body の mode 判定（"reminders" = X分前リマインダー便、なし = デイリーダイジェスト）
+  let mode = "";
+  try {
+    const body = await req.json();
+    mode = body?.mode ?? "";
+  } catch (_) { /* body なし */ }
+
   // 今日・明日（JST: UTC+9）
   const nowUtc = new Date();
   const jstOffset = 9 * 60 * 60000;
@@ -299,6 +322,61 @@ Deno.serve(async (req) => {
 
   const staleIds: string[] = [];
   let sentCount = 0;
+
+  // ── X分前リマインダー便（5分間隔 cron、body {"mode":"reminders"}）──
+  if (mode === "reminders") {
+    const WINDOW_MIN = 5;
+    const nowMin = nowJst.getUTCHours() * 60 + nowJst.getUTCMinutes();
+    const { data: evs, error: evErr } = await supabase
+      .from("events")
+      .select("user_id, title, time, reminder_minutes")
+      .eq("date_key", today)
+      .not("reminder_minutes", "is", null)
+      .not("time", "is", null);
+    if (evErr) return new Response(evErr.message, { status: 500 });
+
+    // 発火ウィンドウ（now <= fireAt < now+5分）に入った予定をユーザー毎に集約
+    const dueByUser = new Map<string, { title: string; time: string }[]>();
+    for (const ev of evs ?? []) {
+      if (!ev.title || !ev.time) continue;
+      const parts = String(ev.time).split(":").map(Number);
+      if (isNaN(parts[0]) || isNaN(parts[1])) continue;
+      const fireAt = parts[0] * 60 + parts[1] - ev.reminder_minutes;
+      if (fireAt < nowMin || fireAt >= nowMin + WINDOW_MIN) continue;
+      const arr = dueByUser.get(ev.user_id) ?? [];
+      arr.push({ title: ev.title, time: String(ev.time).slice(0, 5) });
+      dueByUser.set(ev.user_id, arr);
+    }
+
+    for (const sub of subs) {
+      const due = dueByUser.get(sub.user_id);
+      if (!due?.length) continue;
+      const notif = {
+        title: "⏰ まもなく予定",
+        body: due.map((d) => `「${d.title}」が ${d.time} に始まります`).slice(0, 4).join("\n"),
+      };
+      try {
+        const status = await sendPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          notif,
+          VAPID_PUBLIC,
+          VAPID_PRIVATE,
+        );
+        if (status === 201 || status === 200) sentCount++;
+        else if (status === 410 || status === 404) staleIds.push(sub.id);
+      } catch (_) {
+        // ネットワークエラーは無視
+      }
+    }
+
+    if (staleIds.length) {
+      await supabase.from("push_subscriptions").delete().in("id", staleIds);
+    }
+    return new Response(
+      JSON.stringify({ mode: "reminders", sent: sentCount, expired: staleIds.length }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  }
 
   for (const sub of subs) {
     // このユーザーの今日・明日のイベントを取得

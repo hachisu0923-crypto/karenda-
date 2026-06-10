@@ -3667,6 +3667,12 @@ input  { font-family: inherit; }
   overflow-y: auto;
 }
 
+.budget-entry.is-editing {
+  outline: 1.5px solid var(--color-accent);
+  outline-offset: -1.5px;
+  border-radius: var(--radius-md);
+}
+
 .budget-date-group {
   margin-bottom: 6px;
 }

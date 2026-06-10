@@ -336,7 +336,8 @@
             <input class="form-input budget-date-input" id="js-budget-date" type="date" />
             <input class="bp-add-input budget-memo-input" id="js-budget-memo" type="text"
                    placeholder="メモ（任意）" />
-            <button class="bp-add-btn" type="submit">追加</button>
+            <button class="bp-add-btn" type="submit" id="js-budget-submit-btn">追加</button>
+            <button class="bp-add-btn budget-cancel-btn" type="button" id="js-budget-cancel-edit" style="display:none">キャンセル</button>
           </div>
         </form>
         <!-- Hidden file input for receipt camera/upload -->
@@ -416,6 +417,18 @@
             <label class="form-label" for="js-ev-time-end">終了時刻（任意）</label>
             <input class="form-input" type="time" id="js-ev-time-end" />
           </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="js-ev-reminder">🔔 通知</label>
+          <select class="form-input" id="js-ev-reminder">
+            <option value="">なし</option>
+            <option value="5">5分前</option>
+            <option value="10">10分前</option>
+            <option value="15">15分前</option>
+            <option value="30">30分前</option>
+            <option value="60">1時間前</option>
+            <option value="120">2時間前</option>
+          </select>
         </div>
         <div class="form-row">
           <label class="form-label">カテゴリ</label>
@@ -508,6 +521,18 @@
             <label class="form-label" for="js-edit-ev-time-end">終了時刻（任意）</label>
             <input class="form-input" type="time" id="js-edit-ev-time-end" />
           </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="js-edit-ev-reminder">🔔 通知</label>
+          <select class="form-input" id="js-edit-ev-reminder">
+            <option value="">なし</option>
+            <option value="5">5分前</option>
+            <option value="10">10分前</option>
+            <option value="15">15分前</option>
+            <option value="30">30分前</option>
+            <option value="60">1時間前</option>
+            <option value="120">2時間前</option>
+          </select>
         </div>
         <div class="form-row">
           <label class="form-label">カテゴリ</label>
