@@ -2886,6 +2886,49 @@ applyTheme(isDark);
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
 })();
 
+// ── Mobile: Properties パネル内の左右スワイプでタブ切替 ──────────────────────
+(function initBottomPanelHSwipe() {
+  const panel = document.querySelector('.bottom-panel');
+  if (!panel) return;
+  const SWIPE_THRESHOLD = 60;
+  const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
+  const TAB_ORDER = ['goal', 'task', 'budget'];
+
+  let startX = 0, startY = 0, tracking = false;
+
+  document.addEventListener('touchstart', e => {
+    if (!isMobile()) return;
+    if (document.querySelector('.overlay.is-open')) { tracking = false; return; }
+    if (!panel.contains(e.target)) { tracking = false; return; }
+    if (e.target.closest('.bp-swipe-handle')) { tracking = false; return; }
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    tracking = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!tracking) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    if (adx < SWIPE_THRESHOLD || adx <= ady * 1.2) return;     // 水平支配かつ閾値超え
+    tracking = false;                                          // 1 ジェスチャ＝1 タブ移動
+    const activeBtn = panel.querySelector('.bp-tab.is-active');
+    const cur = activeBtn ? activeBtn.dataset.bp : 'goal';
+    const idx = TAB_ORDER.indexOf(cur);
+    if (idx < 0) return;
+    // 右スワイプ（dx > 0）= 前のタブ、左スワイプ（dx < 0）= 次のタブ
+    const next = dx > 0 ? idx - 1 : idx + 1;
+    if (next < 0 || next >= TAB_ORDER.length) return;          // 端は循環しない
+    const targetBtn = panel.querySelector(`.bp-tab[data-bp="${TAB_ORDER[next]}"]`);
+    if (targetBtn) targetBtn.click();                          // 既存ハンドラに委ねる
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
+})();
+
 // ── iOS Safari ピンチ/ダブルタップ拡大の完全抑止 ────────────────────────
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
   document.addEventListener(ev, e => e.preventDefault(), { passive: false });
