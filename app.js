@@ -182,7 +182,7 @@ function catCounts() {
 // ── Push Notification ─────────────────────────────────────────────────────────
 
 // VAPID public key（Edge Function の VAPID_PUBLIC_KEY と一致させること）
-const VAPID_PUBLIC_KEY = 'BNbaJJlWNEwlkbRPPJjgU_NAtj-hUc_d8qksT3aoSlsBaxuCDwnMYYgeM0gzVcd6Qqd-J2xGJ4DzPX4FjCsrcug';
+const VAPID_PUBLIC_KEY = 'BHHdWaRp_PkaJ49UF_c7pW7deXy79CtIx8K3SZ-gK18i7C-PjbYuBqhdEDzI7lUwp0NfSIqUEMPs5ra9IE4fiQg';
 
 function _urlBase64ToUint8Array(base64String) {
   const pad = '='.repeat((4 - base64String.length % 4) % 4);
