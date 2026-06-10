@@ -182,7 +182,7 @@ function catCounts() {
 // ── Push Notification ─────────────────────────────────────────────────────────
 
 // VAPID public key（Edge Function の VAPID_PUBLIC_KEY と一致させること）
-const VAPID_PUBLIC_KEY = 'BNbaJJlWNEwlkbRPPJjgU_NAtj-hUc_d8qksT3aoSlsBaxuCDwnMYYgeM0gzVcd6Qqd-J2xGJ4DzPX4FjCsrcug';
+const VAPID_PUBLIC_KEY = 'BHHdWaRp_PkaJ49UF_c7pW7deXy79CtIx8K3SZ-gK18i7C-PjbYuBqhdEDzI7lUwp0NfSIqUEMPs5ra9IE4fiQg';
 
 function _urlBase64ToUint8Array(base64String) {
   const pad = '='.repeat((4 - base64String.length % 4) % 4);
@@ -197,6 +197,13 @@ async function subscribeToPush() {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    // VAPID 公開鍵が変わっていたら古い購読を破棄して再購読
+    if (sub && sub.options?.applicationServerKey) {
+      const cur  = new Uint8Array(sub.options.applicationServerKey);
+      const want = _urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const same = cur.length === want.length && cur.every((b, i) => b === want[i]);
+      if (!same) { try { await sub.unsubscribe(); } catch (_) {} sub = null; }
+    }
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -270,14 +277,71 @@ async function requestNotificationPermission() {
   return result === 'granted';
 }
 
-// ログイン後に呼ぶ：通知許可を求め、Push 購読登録し、当日分チェック
-async function initNotifications() {
-  if (!('Notification' in window)) return;
-  const granted = await requestNotificationPermission();
-  checkAndSendNotifications();
+// ── 通知有効化ボタン（タップ起点での許可取得：iOS / Chrome の必須要件）──────
 
-  // アプリを開いていないときも通知が届くよう Web Push 購読を登録
-  if (granted) subscribeToPush();
+const _isStandalone = () => window.navigator.standalone === true
+  || window.matchMedia('(display-mode: standalone)').matches;
+const _isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);  // iPadOS
+
+function _updateNotifBtn() {
+  const btn = document.getElementById('js-notif-btn');
+  if (!btn) return;
+  if (!('Notification' in window)) {
+    // iOS Safari（未インストール）は通知 API 自体が無い → 案内導線として表示を残す
+    if (_isIOS() && !_isStandalone()) { btn.textContent = '🔔 通知を有効にする'; return; }
+    btn.style.display = 'none';
+    return;
+  }
+  const p = Notification.permission;
+  btn.classList.toggle('is-on', p === 'granted');
+  btn.classList.toggle('is-denied', p === 'denied');
+  if (p === 'granted')      btn.textContent = '🔔 通知 ON（テスト送信）';
+  else if (p === 'denied')  btn.textContent = '🔕 ブラウザ設定で許可が必要';
+  else                      btn.textContent = '🔔 通知を有効にする';
+}
+
+document.getElementById('js-notif-btn')?.addEventListener('click', async () => {
+  // iOS でホーム画面に追加されていない（or 通知 API なし）→ 追加手順を案内
+  if (_isIOS() && !_isStandalone()) { openOverlay('js-ios-guide-overlay'); return; }
+  if (!('Notification' in window)) {
+    if (_isIOS()) { openOverlay('js-ios-guide-overlay'); return; }
+    alert('このブラウザは通知に対応していません。');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    alert('通知がブロックされています。ブラウザの設定（サイトの権限）からこのサイトの通知を許可してください。');
+    return;
+  }
+  const granted = await requestNotificationPermission();
+  if (granted) {
+    await subscribeToPush();
+    checkAndSendNotifications();
+    _showNotif('🔔 通知テスト', '通知はこのように届きます');
+  }
+  _updateNotifBtn();
+});
+
+document.getElementById('js-ios-guide-close')?.addEventListener('click', () => closeOverlay('js-ios-guide-overlay'));
+document.getElementById('js-ios-guide-ok')?.addEventListener('click', () => closeOverlay('js-ios-guide-overlay'));
+document.getElementById('js-ios-guide-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('js-ios-guide-overlay')) closeOverlay('js-ios-guide-overlay');
+});
+
+// ログイン後に呼ぶ：許可済みなら Push 購読を更新し、当日分チェック
+// ※許可ダイアログは自動では出さない（iOS / Chrome はユーザー操作起点が必須）。
+//   未許可の場合はサイドバーの通知ボタン（js-notif-btn）から取得する。
+async function initNotifications() {
+  _updateNotifBtn();
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    checkAndSendNotifications();
+    subscribeToPush();   // 購読を最新化（VAPID 鍵変更時は再購読）
+  }
+
+  // 予定の「X分前」リマインダーを 1 分間隔でチェック（許可状態は内部で判定）
+  checkDueReminders();
+  setInterval(checkDueReminders, 60000);
 
   // 次の00:00に再チェックをスケジュール
   const now = new Date();
@@ -286,6 +350,31 @@ async function initNotifications() {
     checkAndSendNotifications();
     setInterval(checkAndSendNotifications, 86400000);
   }, msUntilMidnight);
+}
+
+// 当日の予定で reminderMinutes が設定されたものを走査し、発火時刻を過ぎていれば通知
+function checkDueReminders() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const todayKey = dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const list = events[todayKey] || [];
+  if (!list.length) return;
+  const notified = _getNotifiedKeys();
+  let changed = false;
+  list.forEach(ev => {
+    if (!ev.title || !ev.time || ev.reminderMinutes == null) return;
+    const hm = ev.time.split(':').map(Number);
+    if (hm.length < 2 || isNaN(hm[0])) return;
+    const evTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hm[0], hm[1]);
+    const fireAt = new Date(evTime.getTime() - ev.reminderMinutes * 60000);
+    if (now < fireAt || now >= evTime) return;       // 発火ウィンドウ外
+    const key = `rem_${ev._dbId ?? ev.title}_${todayKey}`;
+    if (notified[key]) return;
+    notified[key] = 1;
+    changed = true;
+    _showNotif('⏰ まもなく予定', `「${ev.title}」が ${ev.time} に始まります`, key);
+  });
+  if (changed) _saveNotifiedKeys(notified);
 }
 
 function checkAndSendNotifications() {
@@ -494,7 +583,8 @@ async function loadFromSupabase() {
         shiftStart,
         shiftEnd,
         breakMinutes,
-        overtimeMinutes
+        overtimeMinutes,
+        reminderMinutes: r.reminder_minutes ?? r.reminderMinutes ?? null
       });
     });
 
@@ -571,13 +661,16 @@ async function detectEventColumns() {
     };
     // overtime_minutes カラムが存在するかチェック（マイグレーション未実行の環境向け）
     _evColMap._hasOvertime = cols.some(c => /overtime/i.test(c));
+    _evColMap.reminderMinutes = cols.find(c => /reminder/i.test(c)) ?? 'reminder_minutes';
+    _evColMap._hasReminder = cols.some(c => /reminder/i.test(c));
   } else {
     // テーブルが空の場合はデフォルトを使う
     _evColMap = {
       timeEnd: 'time_end', shiftStart: 'shift_start', shiftEnd: 'shift_end',
       breakMinutes: 'break_minutes', overtimeMinutes: 'overtime_minutes',
       dateKey: 'date_key', catId: 'cat_id', userId: 'user_id',
-      _hasOvertime: true
+      _hasOvertime: true,
+      reminderMinutes: 'reminder_minutes', _hasReminder: true
     };
   }
   return _evColMap;
@@ -599,6 +692,7 @@ async function addEventToSupabase(key, ev) {
       [m.breakMinutes]: ev.breakMinutes ?? 0
     };
     if (m._hasOvertime) row[m.overtimeMinutes] = ev.overtimeMinutes ?? 0;
+    if (m._hasReminder) row[m.reminderMinutes] = ev.reminderMinutes ?? null;
     const { data, error } = await db.from('events').insert(row).select().single();
     if (error) throw error;
     ev._dbId = data.id;
@@ -643,6 +737,7 @@ async function updateEventInSupabase(ev) {
       [m.breakMinutes]: ev.breakMinutes ?? 0
     };
     if (m._hasOvertime) payload[m.overtimeMinutes] = ev.overtimeMinutes ?? 0;
+    if (m._hasReminder) payload[m.reminderMinutes] = ev.reminderMinutes ?? null;
     const { error } = await db.from('events').update(payload).eq('id', ev._dbId);
     if (error) throw error;
     setSyncStatus('synced');
@@ -1380,6 +1475,8 @@ function openDayModal(y,m,d) {
   document.getElementById('js-ev-title').value='';
   document.getElementById('js-ev-time-start').value='';
   document.getElementById('js-ev-time-end').value='';
+  const _remSel=document.getElementById('js-ev-reminder');
+  if (_remSel) _remSel.value='';
   if (!getCat(selectedCatId)) selectedCatId=normalCats()[0]?.id??categories[0]?.id;
 
   document.getElementById('js-shift-start').value='';
@@ -1594,6 +1691,8 @@ function openEditModal(ev) {
     document.getElementById('js-edit-ev-title').value       = ev.title   || '';
     document.getElementById('js-edit-ev-time-start').value = ev.time    || '';
     document.getElementById('js-edit-ev-time-end').value   = ev.timeEnd || '';
+    const remSel = document.getElementById('js-edit-ev-reminder');
+    if (remSel) remSel.value = ev.reminderMinutes != null ? String(ev.reminderMinutes) : '';
     renderEditCatChips();
   }
 
@@ -1685,6 +1784,8 @@ document.getElementById('js-edit-save-btn').addEventListener('click', async () =
     editingEv.time    = document.getElementById('js-edit-ev-time-start').value;
     editingEv.timeEnd = document.getElementById('js-edit-ev-time-end').value;
     editingEv.catId   = editingCatId;
+    const remSel = document.getElementById('js-edit-ev-reminder');
+    editingEv.reminderMinutes = remSel?.value ? +remSel.value : null;
   }
 
   await updateEventInSupabase(editingEv);
@@ -1827,13 +1928,16 @@ async function addEvent() {
   if (!title){document.getElementById('js-ev-title').focus();return;}
   const time=document.getElementById('js-ev-time-start').value;
   const timeEnd=document.getElementById('js-ev-time-end').value;
-  const ev={title,time,timeEnd,catId:selectedCatId};
+  const remSel=document.getElementById('js-ev-reminder');
+  const reminderMinutes=remSel?.value?+remSel.value:null;
+  const ev={title,time,timeEnd,catId:selectedCatId,reminderMinutes};
   if (!events[selectedKey]) events[selectedKey]=[];
   events[selectedKey].push(ev);
   await addEventToSupabase(selectedKey,ev);
   document.getElementById('js-ev-title').value='';
   document.getElementById('js-ev-time-start').value='';
   document.getElementById('js-ev-time-end').value='';
+  if (remSel) remSel.value='';
   renderExistingEvents();
   renderAll();
 }
@@ -1911,7 +2015,8 @@ function _cloneEv(src) {
     return { title:'', catId:src.catId, shiftStart:src.shiftStart, shiftEnd:src.shiftEnd,
              breakMinutes:src.breakMinutes ?? 0, overtimeMinutes:src.overtimeMinutes ?? 0 };
   }
-  return { title:src.title ?? '', time:src.time || '', timeEnd:src.timeEnd || '', catId:src.catId };
+  return { title:src.title ?? '', time:src.time || '', timeEnd:src.timeEnd || '', catId:src.catId,
+           reminderMinutes:src.reminderMinutes ?? null };
 }
 
 // 各日付に clone を作成して保存
@@ -1991,11 +2096,13 @@ document.getElementById('js-repeat-overlay').addEventListener('click', e => {
 document.getElementById('js-ev-repeat-btn').addEventListener('click', () => {
   const title = document.getElementById('js-ev-title').value.trim();
   if (!title) { document.getElementById('js-ev-title').focus(); return; }
+  const remSel = document.getElementById('js-ev-reminder');
   const ev = {
     title,
     time:    document.getElementById('js-ev-time-start').value,
     timeEnd: document.getElementById('js-ev-time-end').value,
-    catId:   selectedCatId
+    catId:   selectedCatId,
+    reminderMinutes: remSel?.value ? +remSel.value : null
   };
   openRepeatPicker(ev, { excludeBase:false });
 });
@@ -2027,11 +2134,13 @@ document.getElementById('js-edit-copy-btn').addEventListener('click', () => {
   } else {
     const title = document.getElementById('js-edit-ev-title').value.trim();
     if (!title) { document.getElementById('js-edit-ev-title').focus(); return; }
+    const remSel = document.getElementById('js-edit-ev-reminder');
     srcEv = {
       title,
       time:    document.getElementById('js-edit-ev-time-start').value,
       timeEnd: document.getElementById('js-edit-ev-time-end').value,
-      catId:   editingCatId
+      catId:   editingCatId,
+      reminderMinutes: remSel?.value ? +remSel.value : null
     };
   }
   openRepeatPicker(srcEv, { excludeBase:true });
@@ -2646,7 +2755,7 @@ document.getElementById('js-open-budget-cat-editor').addEventListener('click',op
 document.addEventListener('keydown',e=>{
   // Escapeキーはinput内でもモーダルを閉じられるようにする
   if (e.key==='Escape'){
-    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();
+    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();closeOverlay('js-ios-guide-overlay');
     if (document.activeElement) document.activeElement.blur();
     return;
   }
@@ -4363,6 +4472,28 @@ async function addBudgetToSupabase(entry) {
   }
 }
 
+async function updateBudgetToSupabase(entry) {
+  if (!currentUser) return;
+  setSyncStatus('syncing');
+  try {
+    const { error } = await db.from('budget_entries')
+      .update({
+        type:   entry.type,
+        cat_id: entry.catId,
+        amount: entry.amount,
+        memo:   entry.memo || '',
+        date:   entry.date
+      })
+      .eq('user_id', currentUser.id)
+      .eq('entry_id', entry.id);
+    if (error) throw error;
+    setSyncStatus('synced');
+  } catch (e) {
+    console.error('Budget update error:', e);
+    setSyncStatus('error');
+  }
+}
+
 async function deleteBudgetFromSupabase(entryId) {
   if (!currentUser) return;
   setSyncStatus('syncing');
@@ -4506,8 +4637,23 @@ async function initBudgetPanel(user) {
     const catId = catEl?.value || (type === 'expense' ? 'food' : 'salary');
     const memo = (memoEl?.value || '').trim();
     const date = dateEl?.value || _todayStr();
-    const id = `b_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
+    // 編集モード：既存エントリを更新
+    if (_budgetEditingId) {
+      const entry = _budgetState.entries.find(en => en.id === _budgetEditingId);
+      _exitBudgetEditMode();
+      if (entry) {
+        entry.type = type; entry.catId = catId; entry.amount = amount;
+        entry.memo = memo; entry.date = date;
+        renderBudgetPanel();
+        await updateBudgetToSupabase(entry);
+      } else {
+        renderBudgetPanel();
+      }
+      return;
+    }
+
+    const id = `b_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     const entry = { id, type, catId, amount, memo, date, createdAt: Date.now() };
     _budgetState.entries.push(entry);
     amountEl.value = '';
@@ -4516,17 +4662,32 @@ async function initBudgetPanel(user) {
     await addBudgetToSupabase(entry);
   });
 
-  // Delete entry
+  // Cancel edit
+  document.getElementById('js-budget-cancel-edit')?.addEventListener('click', () => {
+    _exitBudgetEditMode();
+    renderBudgetPanel();
+  });
+
+  // Tap row to edit / delete button
   listEl.addEventListener('click', async (e) => {
     if (!_budgetState) return;
     const delBtn = e.target.closest?.('.budget-entry-del');
-    if (!delBtn) return;
-    const row = delBtn.closest('[data-budget-id]');
-    if (!row) return;
+    if (delBtn) {
+      const row = delBtn.closest('[data-budget-id]');
+      if (!row) return;
+      const id = row.getAttribute('data-budget-id');
+      if (id === _budgetEditingId) _exitBudgetEditMode();
+      _budgetState.entries = _budgetState.entries.filter(en => en.id !== id);
+      renderBudgetPanel();
+      await deleteBudgetFromSupabase(id);
+      return;
+    }
+    // 手動エントリ行のタップで編集モードへ（自動エントリは対象外）
+    const row = e.target.closest?.('.budget-entry');
+    if (!row || row.classList.contains('is-auto')) return;
     const id = row.getAttribute('data-budget-id');
-    _budgetState.entries = _budgetState.entries.filter(en => en.id !== id);
-    renderBudgetPanel();
-    await deleteBudgetFromSupabase(id);
+    const entry = _budgetState.entries.find(en => en.id === id);
+    if (entry) _enterBudgetEditMode(entry);
   });
 
   // Filter tabs
@@ -4549,6 +4710,41 @@ function _updateBudgetCatOptions() {
   const type = typeEl.value;
   const cats = type === 'income' ? budgetIncomeCats : budgetExpenseCats;
   catEl.innerHTML = cats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+}
+
+// ── Budget entry edit mode ────────────────────────────────────────────────────
+
+let _budgetEditingId = null;
+
+function _enterBudgetEditMode(entry) {
+  if (!_budgetState) return;
+  _budgetEditingId = entry.id;
+  const els = _budgetState.els;
+  if (els.typeEl) els.typeEl.value = entry.type;
+  _updateBudgetCatOptions();
+  if (els.catEl)    els.catEl.value    = entry.catId;
+  if (els.amountEl) els.amountEl.value = entry.amount;
+  if (els.dateEl && entry.date) els.dateEl.value = entry.date;
+  if (els.memoEl)   els.memoEl.value   = entry.memo || '';
+  const submitBtn = document.getElementById('js-budget-submit-btn');
+  const cancelBtn = document.getElementById('js-budget-cancel-edit');
+  if (submitBtn) submitBtn.textContent = '保存';
+  if (cancelBtn) cancelBtn.style.display = '';
+  renderBudgetPanel();                       // is-editing ハイライト反映
+  els.amountEl?.focus();
+}
+
+function _exitBudgetEditMode() {
+  _budgetEditingId = null;
+  const els = _budgetState?.els;
+  if (els) {
+    if (els.amountEl) els.amountEl.value = '';
+    if (els.memoEl)   els.memoEl.value   = '';
+  }
+  const submitBtn = document.getElementById('js-budget-submit-btn');
+  const cancelBtn = document.getElementById('js-budget-cancel-edit');
+  if (submitBtn) submitBtn.textContent = '追加';
+  if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 function _collectShiftsForMonth(y, m) {
@@ -4824,7 +5020,7 @@ function renderBudgetPanel() {
         displaySign = isInc ? '+' : '-';
         amountCls   = isInc ? 'is-income' : 'is-expense';
       }
-      html += '<div class="budget-entry ' + (isInc ? 'is-income' : 'is-expense') + (isAuto ? ' is-auto' : '') + '" data-budget-id="' + gen.id + '">' +
+      html += '<div class="budget-entry ' + (isInc ? 'is-income' : 'is-expense') + (isAuto ? ' is-auto' : '') + (gen.id === _budgetEditingId ? ' is-editing' : '') + '" data-budget-id="' + gen.id + '">' +
         '<span class="budget-entry-icon' + (isAuto ? ' is-shift-icon' : '') + '">' + gIcon + '</span>' +
         '<div class="budget-entry-body"><span class="budget-entry-cat">' + gCatName + (isAuto ? '<span class="budget-auto-badge">' + autoBadge + '</span>' : '') + '</span>' +
         (gen.memo ? '<span class="budget-entry-memo">' + escapeHtml(gen.memo) + '</span>' : '') +

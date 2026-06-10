@@ -1,5 +1,5 @@
 // My Calendar - Service Worker
-const CACHE_NAME = 'my-calendar-v8';
+const CACHE_NAME = 'my-calendar-v9';
 
 // インストール時：基本ファイルをキャッシュ
 self.addEventListener('install', e => {
@@ -38,8 +38,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body:    data.body,
-      icon:    data.icon  ?? '/icon-192.png',
-      badge:   data.badge ?? '/icon-192.png',
+      icon:    data.icon  ?? './icon-192.png',
+      badge:   data.badge ?? './icon-192.png',
       tag:     data.tag   ?? 'my-calendar-push',
       renotify: true,
       data:    { url: data.url ?? '/' }

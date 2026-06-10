@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>My Calendar</title>
   <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="My Calendar" />
@@ -152,6 +153,11 @@
     </div>
 
     <div style="flex:1"></div>
+
+    <!-- Push notification enable button -->
+    <div class="sidebar-notif-area">
+      <button class="btn-notif" id="js-notif-btn">🔔 通知を有効にする</button>
+    </div>
 
     <!-- User info + logout -->
     <div class="sidebar-user-area">
@@ -336,7 +342,8 @@
             <input class="form-input budget-date-input" id="js-budget-date" type="date" />
             <input class="bp-add-input budget-memo-input" id="js-budget-memo" type="text"
                    placeholder="メモ（任意）" />
-            <button class="bp-add-btn" type="submit">追加</button>
+            <button class="bp-add-btn" type="submit" id="js-budget-submit-btn">追加</button>
+            <button class="bp-add-btn budget-cancel-btn" type="button" id="js-budget-cancel-edit" style="display:none">キャンセル</button>
           </div>
         </form>
         <!-- Hidden file input for receipt camera/upload -->
@@ -416,6 +423,18 @@
             <label class="form-label" for="js-ev-time-end">終了時刻（任意）</label>
             <input class="form-input" type="time" id="js-ev-time-end" />
           </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="js-ev-reminder">🔔 通知</label>
+          <select class="form-input" id="js-ev-reminder">
+            <option value="">なし</option>
+            <option value="5">5分前</option>
+            <option value="10">10分前</option>
+            <option value="15">15分前</option>
+            <option value="30">30分前</option>
+            <option value="60">1時間前</option>
+            <option value="120">2時間前</option>
+          </select>
         </div>
         <div class="form-row">
           <label class="form-label">カテゴリ</label>
@@ -510,6 +529,18 @@
           </div>
         </div>
         <div class="form-row">
+          <label class="form-label" for="js-edit-ev-reminder">🔔 通知</label>
+          <select class="form-input" id="js-edit-ev-reminder">
+            <option value="">なし</option>
+            <option value="5">5分前</option>
+            <option value="10">10分前</option>
+            <option value="15">15分前</option>
+            <option value="30">30分前</option>
+            <option value="60">1時間前</option>
+            <option value="120">2時間前</option>
+          </select>
+        </div>
+        <div class="form-row">
           <label class="form-label">カテゴリ</label>
           <div class="cat-chip-list" id="js-edit-cat-chip-list"></div>
         </div>
@@ -587,6 +618,32 @@
     <div class="modal-footer">
       <button class="btn-secondary" id="js-repeat-cancel-btn">キャンセル</button>
       <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-repeat-confirm-btn">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ iOS PWA GUIDE MODAL ═══════════ -->
+<div class="overlay" id="js-ios-guide-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-ios-guide-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-ios-guide-title">📲 ホーム画面に追加が必要です</div>
+      </div>
+      <button class="modal-close-btn" id="js-ios-guide-close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;line-height:1.8;margin:0 0 10px;">
+        iPhone / iPad では、ホーム画面に追加した状態でのみ通知を受け取れます。
+      </p>
+      <ol style="font-size:13px;line-height:2;margin:0;padding-left:20px;">
+        <li>Safari 下部の <strong>共有ボタン（□↑）</strong> をタップ</li>
+        <li><strong>「ホーム画面に追加」</strong> を選択</li>
+        <li>ホーム画面のアイコンからアプリを開く</li>
+        <li>もう一度「🔔 通知を有効にする」をタップ</li>
+      </ol>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-ios-guide-ok">わかった</button>
     </div>
   </div>
 </div>
