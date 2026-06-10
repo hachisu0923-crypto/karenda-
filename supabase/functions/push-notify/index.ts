@@ -1,15 +1,25 @@
 /**
  * push-notify Edge Function
  *
- * 毎朝 08:00 JST (23:00 UTC) に Supabase Cron から呼ばれる想定。
+ * 「アプリを閉じていても通知が届く」ためのセットアップ手順（すべて必須）:
  *
- * Supabase ダッシュボード > Edge Functions > Secrets に以下を登録:
- *   VAPID_PUBLIC_KEY   = BNbaJJlWNEwlkbRPPJjgU_NAtj-hUc_d8qksT3aoSlsBaxuCDwnMYYgeM0gzVcd6Qqd-J2xGJ4DzPX4FjCsrcug
- *   VAPID_PRIVATE_KEY  = 1JKz33hph0H7M235U93zhJFIS7JKFmPAd_Cpv5TSmFY
- *   CRON_SECRET        = <任意の長いランダム文字列>
+ * 1. この関数をデプロイ:
+ *      supabase functions deploy push-notify
  *
- * Supabase ダッシュボード > Database > Extensions で pg_net を有効化し、
- * SQL Editor で以下を実行して毎朝 08:00 JST (= 23:00 UTC) にトリガー:
+ * 2. Supabase ダッシュボード > Edge Functions > Secrets に以下を登録:
+ *      VAPID_PUBLIC_KEY   = <app.js の VAPID_PUBLIC_KEY と同じ値>
+ *      VAPID_PRIVATE_KEY  = <対になる秘密鍵。ここやリポジトリには絶対に書かない>
+ *      CRON_SECRET        = <任意の長いランダム文字列>
+ *    ※鍵ペアの新規生成: `npx web-push generate-vapid-keys`
+ *    ※鍵を作り直した場合は app.js の VAPID_PUBLIC_KEY も差し替えること。
+ *      既存購読は無効になるが、クライアントが鍵の不一致を検出して自動で再購読する
+ *      （各端末で一度アプリを開く必要あり）
+ *
+ * 3. SQL Editor で migrations/20260412_push_subscriptions.sql と
+ *    migrations/20260610_reminder_minutes.sql を適用
+ *
+ * 4. Database > Extensions で pg_net を有効化し、SQL Editor で cron を登録:
+ *    （毎朝 08:00 JST = 23:00 UTC のデイリーダイジェスト便）
  *
  *   SELECT cron.schedule(
  *     'push-notify-daily',
@@ -29,7 +39,6 @@
  *   SELECT cron.schedule(
  *     'push-notify-reminders',
  *     '0,5,10,15,20,25,30,35,40,45,50,55 * * * *',  -- 5分間隔
-
  *     $$
  *     SELECT net.http_post(
  *       url := 'https://<project-ref>.supabase.co/functions/v1/push-notify',
@@ -38,6 +47,12 @@
  *     );
  *     $$
  *   );
+ *
+ * 5. スマホ側の操作:
+ *    - Android Chrome: サイトを開き、サイドバーの「🔔 通知を有効にする」→ 許可
+ *    - iPhone/iPad (iOS 16.4+): Safari の共有 → ホーム画面に追加 → 追加した
+ *      アイコンから開いて「🔔 通知を有効にする」→ 許可
+ *      （ブラウザのままでは iOS の仕様で通知を受け取れない）
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";

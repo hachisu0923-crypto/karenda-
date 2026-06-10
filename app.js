@@ -197,6 +197,13 @@ async function subscribeToPush() {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    // VAPID 公開鍵が変わっていたら古い購読を破棄して再購読
+    if (sub && sub.options?.applicationServerKey) {
+      const cur  = new Uint8Array(sub.options.applicationServerKey);
+      const want = _urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const same = cur.length === want.length && cur.every((b, i) => b === want[i]);
+      if (!same) { try { await sub.unsubscribe(); } catch (_) {} sub = null; }
+    }
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -270,16 +277,69 @@ async function requestNotificationPermission() {
   return result === 'granted';
 }
 
-// ログイン後に呼ぶ：通知許可を求め、Push 購読登録し、当日分チェック
-async function initNotifications() {
-  if (!('Notification' in window)) return;
+// ── 通知有効化ボタン（タップ起点での許可取得：iOS / Chrome の必須要件）──────
+
+const _isStandalone = () => window.navigator.standalone === true
+  || window.matchMedia('(display-mode: standalone)').matches;
+const _isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);  // iPadOS
+
+function _updateNotifBtn() {
+  const btn = document.getElementById('js-notif-btn');
+  if (!btn) return;
+  if (!('Notification' in window)) {
+    // iOS Safari（未インストール）は通知 API 自体が無い → 案内導線として表示を残す
+    if (_isIOS() && !_isStandalone()) { btn.textContent = '🔔 通知を有効にする'; return; }
+    btn.style.display = 'none';
+    return;
+  }
+  const p = Notification.permission;
+  btn.classList.toggle('is-on', p === 'granted');
+  btn.classList.toggle('is-denied', p === 'denied');
+  if (p === 'granted')      btn.textContent = '🔔 通知 ON（テスト送信）';
+  else if (p === 'denied')  btn.textContent = '🔕 ブラウザ設定で許可が必要';
+  else                      btn.textContent = '🔔 通知を有効にする';
+}
+
+document.getElementById('js-notif-btn')?.addEventListener('click', async () => {
+  // iOS でホーム画面に追加されていない（or 通知 API なし）→ 追加手順を案内
+  if (_isIOS() && !_isStandalone()) { openOverlay('js-ios-guide-overlay'); return; }
+  if (!('Notification' in window)) {
+    if (_isIOS()) { openOverlay('js-ios-guide-overlay'); return; }
+    alert('このブラウザは通知に対応していません。');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    alert('通知がブロックされています。ブラウザの設定（サイトの権限）からこのサイトの通知を許可してください。');
+    return;
+  }
   const granted = await requestNotificationPermission();
-  checkAndSendNotifications();
+  if (granted) {
+    await subscribeToPush();
+    checkAndSendNotifications();
+    _showNotif('🔔 通知テスト', '通知はこのように届きます');
+  }
+  _updateNotifBtn();
+});
 
-  // アプリを開いていないときも通知が届くよう Web Push 購読を登録
-  if (granted) subscribeToPush();
+document.getElementById('js-ios-guide-close')?.addEventListener('click', () => closeOverlay('js-ios-guide-overlay'));
+document.getElementById('js-ios-guide-ok')?.addEventListener('click', () => closeOverlay('js-ios-guide-overlay'));
+document.getElementById('js-ios-guide-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('js-ios-guide-overlay')) closeOverlay('js-ios-guide-overlay');
+});
 
-  // 予定の「X分前」リマインダーを 1 分間隔でチェック
+// ログイン後に呼ぶ：許可済みなら Push 購読を更新し、当日分チェック
+// ※許可ダイアログは自動では出さない（iOS / Chrome はユーザー操作起点が必須）。
+//   未許可の場合はサイドバーの通知ボタン（js-notif-btn）から取得する。
+async function initNotifications() {
+  _updateNotifBtn();
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    checkAndSendNotifications();
+    subscribeToPush();   // 購読を最新化（VAPID 鍵変更時は再購読）
+  }
+
+  // 予定の「X分前」リマインダーを 1 分間隔でチェック（許可状態は内部で判定）
   checkDueReminders();
   setInterval(checkDueReminders, 60000);
 
@@ -2695,7 +2755,7 @@ document.getElementById('js-open-budget-cat-editor').addEventListener('click',op
 document.addEventListener('keydown',e=>{
   // Escapeキーはinput内でもモーダルを閉じられるようにする
   if (e.key==='Escape'){
-    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();
+    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();closeOverlay('js-ios-guide-overlay');
     if (document.activeElement) document.activeElement.blur();
     return;
   }
