@@ -2755,7 +2755,7 @@ document.getElementById('js-open-budget-cat-editor').addEventListener('click',op
 document.addEventListener('keydown',e=>{
   // Escapeキーはinput内でもモーダルを閉じられるようにする
   if (e.key==='Escape'){
-    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();closeOverlay('js-ios-guide-overlay');
+    closeOverlay('js-day-overlay');closeOverlay('js-cat-overlay');closeOverlay('js-budget-cat-overlay');closeEditModal();closeColorPopup();closeOverlay('js-receipt-overlay');closeOverlay('js-apikey-overlay');closeOverlay('js-overtime-cashout-overlay');closeOverlay('js-overtime-history-overlay');closeRepeatPicker();closeOverlay('js-ios-guide-overlay');closeOverlay('js-jcb-overlay');
     if (document.activeElement) document.activeElement.blur();
     return;
   }
@@ -4410,6 +4410,7 @@ async function loadBudgetFromSupabase(userId, monthKey) {
       amount:    r.amount,
       memo:      r.memo || '',
       date:      r.date,
+      source:    r.source || null,
       createdAt: new Date(r.created_at).getTime()
     }));
   } catch (e) {
@@ -5022,7 +5023,7 @@ function renderBudgetPanel() {
       }
       html += '<div class="budget-entry ' + (isInc ? 'is-income' : 'is-expense') + (isAuto ? ' is-auto' : '') + (gen.id === _budgetEditingId ? ' is-editing' : '') + '" data-budget-id="' + gen.id + '">' +
         '<span class="budget-entry-icon' + (isAuto ? ' is-shift-icon' : '') + '">' + gIcon + '</span>' +
-        '<div class="budget-entry-body"><span class="budget-entry-cat">' + gCatName + (isAuto ? '<span class="budget-auto-badge">' + autoBadge + '</span>' : '') + '</span>' +
+        '<div class="budget-entry-body"><span class="budget-entry-cat">' + gCatName + (isAuto ? '<span class="budget-auto-badge">' + autoBadge + '</span>' : '') + (gen.source === 'jcb' ? '<span class="budget-jcb-badge" title="JCBメールから自動取込">💳</span>' : '') + '</span>' +
         (gen.memo ? '<span class="budget-entry-memo">' + escapeHtml(gen.memo) + '</span>' : '') +
         '</div>' +
         '<span class="budget-entry-amount ' + amountCls + '">' + displaySign + fmtYen(Math.abs(gen.amount)) + '</span>' +
@@ -5105,6 +5106,19 @@ function _showReceiptStep(step) {
 }
 
 document.getElementById('js-receipt-btn').addEventListener('click', openReceiptModal);
+
+// ── JCB メール自動取込 設定モーダル ──
+document.getElementById('js-jcb-btn')?.addEventListener('click', function() {
+  var uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : '';
+  var el = document.getElementById('js-jcb-userid');
+  if (el) el.value = uid || '(ログインすると表示されます)';
+  openOverlay('js-jcb-overlay');
+});
+document.getElementById('js-jcb-close')?.addEventListener('click', function() { closeOverlay('js-jcb-overlay'); });
+document.getElementById('js-jcb-ok')?.addEventListener('click', function() { closeOverlay('js-jcb-overlay'); });
+document.getElementById('js-jcb-overlay')?.addEventListener('click', function(e) {
+  if (e.target === document.getElementById('js-jcb-overlay')) closeOverlay('js-jcb-overlay');
+});
 
 document.getElementById('js-receipt-modal-close').addEventListener('click', function() {
   closeOverlay('js-receipt-overlay');

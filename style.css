@@ -3691,6 +3691,12 @@ input  { font-family: inherit; }
   border-radius: var(--radius-md);
 }
 
+.budget-jcb-badge {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
 .budget-date-group {
   margin-bottom: 6px;
 }

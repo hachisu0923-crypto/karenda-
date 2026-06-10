@@ -317,6 +317,7 @@
           <span class="budget-month-label" id="js-budget-month-label"></span>
           <div class="budget-header-actions">
             <button class="btn-receipt" id="js-receipt-btn" title="レシートから読み取り">📷 レシート読取</button>
+            <button class="btn-receipt-key" id="js-jcb-btn" title="JCBメール自動取込の設定">💳</button>
             <button class="btn-receipt-key" id="js-receipt-key-btn" title="API Key設定">⚙</button>
             <button class="btn-receipt-key" id="js-open-budget-cat-editor" title="カテゴリを編集">🏷</button>
           </div>
@@ -644,6 +645,42 @@
     </div>
     <div class="modal-footer">
       <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-ios-guide-ok">わかった</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ JCB INGEST SETTINGS MODAL ═══════════ -->
+<div class="overlay" id="js-jcb-overlay">
+  <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="js-jcb-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-header-title" id="js-jcb-title">💳 JCBメール自動取込</div>
+        <div class="modal-header-sub">利用通知メールの金額を家計簿へ自動登録</div>
+      </div>
+      <button class="modal-close-btn" id="js-jcb-close" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;line-height:1.8;margin:0 0 12px;">
+        Gmail に届く JCB のご利用通知メールから金額を自動で家計簿に取り込めます。
+        設定には下の 2 つの値を使います（詳しい手順は <strong>SETUP_JCB_INGEST.md</strong>）。
+      </p>
+      <div class="form-row">
+        <label class="form-label">あなたのユーザーID（INGEST_USER_ID にコピー）</label>
+        <input class="form-input" id="js-jcb-userid" type="text" readonly onclick="this.select()" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">取込エンドポイント URL</label>
+        <input class="form-input" id="js-jcb-url" type="text" readonly onclick="this.select()"
+               value="https://oungvayvmxkszsokxwxd.supabase.co/functions/v1/ingest-jcb" />
+      </div>
+      <p style="font-size:12px;line-height:1.7;margin:10px 0 0;opacity:.75;">
+        手順の概要：① SQL を実行 → ② Edge Function <code>ingest-jcb</code> をデプロイ →
+        ③ Secrets（INGEST_SECRET / 上記 INGEST_USER_ID）を登録 →
+        ④ Google Apps Script を設定して 15 分ごとに実行。
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" style="width:auto;padding:7px 18px;" id="js-jcb-ok">閉じる</button>
     </div>
   </div>
 </div>
