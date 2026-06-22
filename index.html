@@ -323,12 +323,6 @@
           </div>
         </div>
         <div id="js-budget-summary"></div>
-        <div class="budget-filter-bar">
-          <button class="budget-filter is-active" data-filter="all">すべて</button>
-          <button class="budget-filter" data-filter="expense">支出</button>
-          <button class="budget-filter" data-filter="income">収入</button>
-        </div>
-        <div class="budget-list" id="js-budget-list"></div>
         <form class="budget-add-form" id="js-budget-form" autocomplete="off">
           <div class="budget-form-row">
             <select class="budget-select budget-type-select" id="js-budget-type">
@@ -347,6 +341,12 @@
             <button class="bp-add-btn budget-cancel-btn" type="button" id="js-budget-cancel-edit" style="display:none">キャンセル</button>
           </div>
         </form>
+        <div class="budget-filter-bar">
+          <button class="budget-filter is-active" data-filter="all">すべて</button>
+          <button class="budget-filter" data-filter="expense">支出</button>
+          <button class="budget-filter" data-filter="income">収入</button>
+        </div>
+        <div class="budget-list" id="js-budget-list"></div>
         <!-- Hidden file input for receipt camera/upload -->
         <input type="file" id="js-receipt-file" accept="image/*" style="display:none" />
       </div>
