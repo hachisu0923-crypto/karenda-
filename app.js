@@ -2942,7 +2942,12 @@ applyTheme(isDark);
       return;
     }
     tracking = false;
-    panel.classList.add('is-expanded');
+    // peek → mid → full と段階的に開く
+    if (panel.classList.contains('is-peek')) {
+      panel.classList.remove('is-peek');
+    } else {
+      panel.classList.add('is-expanded');
+    }
   }, { passive: true });
 
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
@@ -2960,8 +2965,8 @@ applyTheme(isDark);
   document.addEventListener('touchstart', e => {
     if (!isMobile()) return;
     if (document.querySelector('.overlay.is-open')) { tracking = false; return; }
-    // 展開中のみ有効
-    if (!panel.classList.contains('is-expanded')) { tracking = false; return; }
+    // peek 中は下スワイプで何もしない（既に最小）
+    if (panel.classList.contains('is-peek')) { tracking = false; return; }
     // パネル外は無視
     if (!panel.contains(e.target)) { tracking = false; return; }
     // ハンドルは既存 .bp-swipe-handle ハンドラに委ねる
@@ -2987,9 +2992,14 @@ applyTheme(isDark);
       return;
     }
     tracking = false;
-    panel.classList.remove('is-expanded');
-    panel.style.height = '';
-    if (typeof switchView === 'function') switchView('month');
+    // full → mid → peek と段階的に縮小
+    if (panel.classList.contains('is-expanded')) {
+      panel.classList.remove('is-expanded');
+      panel.style.height = '';
+    } else {
+      panel.classList.add('is-peek');
+      if (typeof switchView === 'function') switchView('month');
+    }
   }, { passive: true });
 
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
@@ -3080,6 +3090,7 @@ function switchView(view) {
   document.getElementById('js-week-view').style.display  = view === 'week'  ? '' : 'none';
   document.getElementById('js-day-view').style.display   = view === 'day'   ? '' : 'none';
   document.querySelectorAll('.workspace-tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
+  document.querySelectorAll('.mbb-btn[data-view]').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
   updateStatusBar();
   if (view === 'day') {
     dvDate = new Date(curDate);
@@ -3094,6 +3105,26 @@ function switchView(view) {
 document.getElementById('js-tab-month').addEventListener('click', () => switchView('month'));
 document.getElementById('js-tab-week').addEventListener('click',  () => switchView('week'));
 document.getElementById('js-tab-day').addEventListener('click',   () => switchView('day'));
+
+// ── Mobile bottom navigation: View tabs + FAB + 月名タップで Today ─────────
+document.querySelectorAll('.mbb-btn[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+document.getElementById('js-mbb-more')?.addEventListener('click', () => {
+  document.getElementById('js-sidebar-toggle')?.click();
+});
+document.getElementById('js-fab-add')?.addEventListener('click', () => {
+  // 月/週ビューでは今日を、日ビューでは表示中の日を対象に
+  const target = (currentView === 'day' && dvDate) ? dvDate : new Date();
+  openDayModal(target.getFullYear(), target.getMonth(), target.getDate());
+});
+document.getElementById('js-topbar-title')?.addEventListener('click', () => {
+  document.getElementById('js-today')?.click();
+});
+// 初期状態：スマホでは Properties を peek に
+if (window.matchMedia('(max-width: 720px)').matches) {
+  document.querySelector('.bottom-panel')?.classList.add('is-peek');
+}
 
 // ── Day view navigation ───────────────────────────────────
 
@@ -3648,13 +3679,18 @@ function initBottomPanelSwipe() {
     e.preventDefault();
     const dy = startY - e.touches[0].clientY;
     const isExpanded = panel.classList.contains('is-expanded');
+    const isPeek     = panel.classList.contains('is-peek');
 
     if (isExpanded) {
       // 展開時: 下にドラッグで閉じるプレビュー
       const top = Math.max(0, -dy);
       panel.style.transform = `translateY(${top}px)`;
+    } else if (isPeek) {
+      // peek: 上ドラッグで mid プレビュー
+      const lift = Math.max(0, dy);
+      panel.style.height = `${44 + lift}px`;
     } else {
-      // 縮小時: 上にドラッグで展開プレビュー
+      // mid: 上にドラッグで展開プレビュー
       const lift = Math.max(0, dy);
       panel.style.height = `${180 + lift}px`;
     }
@@ -3664,23 +3700,38 @@ function initBottomPanelSwipe() {
     if (!dragging) return;
     dragging = false;
     const dy = startY - e.changedTouches[0].clientY;
-    const isExpanded = panel.classList.contains('is-expanded');
+    const wasExpanded = panel.classList.contains('is-expanded');
+    const wasPeek     = panel.classList.contains('is-peek');
 
     panel.style.transition = '';
     panel.style.transform = '';
+    panel.style.height = '';
 
-    if (isExpanded) {
-      // 展開中に下スワイプ → 閉じて月間ビューへ
+    // タップ判定（縦移動 6px 未満）：peek ↔ mid トグル
+    if (Math.abs(dy) < 6) {
+      if (wasExpanded) return;
+      if (wasPeek) panel.classList.remove('is-peek');
+      else panel.classList.add('is-peek');
+      return;
+    }
+
+    if (wasExpanded) {
+      // 展開中に下スワイプ → mid に戻す（さらに下スワイプで peek へ）
       if (dy < -80) {
         panel.classList.remove('is-expanded');
-        panel.style.height = '';
-        if (typeof switchView === 'function') switchView('month');
+      }
+    } else if (wasPeek) {
+      // peek 中に上スワイプ → mid（さらに上で full は別 IIFE）
+      if (dy > 60) {
+        panel.classList.remove('is-peek');
       }
     } else {
-      // 縮小中に上スワイプ → 展開
-      panel.style.height = '';
+      // mid 中: 上 80px で full、下 60px で peek
       if (dy > 80) {
         panel.classList.add('is-expanded');
+      } else if (dy < -60) {
+        panel.classList.add('is-peek');
+        if (typeof switchView === 'function') switchView('month');
       }
     }
   }, { passive: true });

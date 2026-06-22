@@ -954,6 +954,25 @@
   </div>
 </div>
 
+<!-- ═══════════ MOBILE: FAB (＋ 予定追加) ═══════════ -->
+<button class="fab" id="js-fab-add" type="button" aria-label="予定を追加">＋</button>
+
+<!-- ═══════════ MOBILE: 下部ナビバー ═══════════ -->
+<nav class="mobile-bottombar" id="js-mobile-bottombar" aria-label="ビュー切替">
+  <button class="mbb-btn is-active" type="button" data-view="month" aria-label="月ビュー">
+    <span class="mbb-icon">📅</span><span class="mbb-label">月</span>
+  </button>
+  <button class="mbb-btn" type="button" data-view="week" aria-label="週ビュー">
+    <span class="mbb-icon">📆</span><span class="mbb-label">週</span>
+  </button>
+  <button class="mbb-btn" type="button" data-view="day" aria-label="日ビュー">
+    <span class="mbb-icon">📋</span><span class="mbb-label">日</span>
+  </button>
+  <button class="mbb-btn" type="button" id="js-mbb-more" aria-label="メニュー">
+    <span class="mbb-icon">⋯</span><span class="mbb-label">他</span>
+  </button>
+</nav>
+
 <script src="app.js"></script>
 <script>
   // Service Worker 登録
