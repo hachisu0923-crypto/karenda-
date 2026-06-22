@@ -3508,7 +3508,13 @@ input  { font-family: inherit; }
 @media (max-width: 720px) {
   .bottom-panel::before { display: none; }
   /* mid（従来）= 180px、peek = ハンドル+タブのみ、is-expanded = 100dvh */
-  .bottom-panel { height: 180px; }
+  .bottom-panel {
+    height: 180px;
+    /* 画面下に固定。底はナビバー分だけ持ち上げる（fixed が無いと bottom が効かない） */
+    position: fixed;
+    left: 0; right: 0;
+    z-index: 40;
+  }
   .bottom-panel.is-peek { height: 44px; }
   .bottom-panel.is-peek > .bp-section { display: none !important; }
   .bottom-panel.is-peek .bp-panel-header { padding-top: 0; padding-bottom: 0; }
@@ -3556,7 +3562,9 @@ input  { font-family: inherit; }
 
   /* Properties / FAB を下部ナビ分だけ上に押し上げる */
   .bottom-panel { bottom: calc(56px + env(safe-area-inset-bottom)); }
-  .bottom-panel.is-expanded { bottom: 0; }
+  /* 全画面展開時はナビバーごと覆い、ナビバー自体も隠して被り回避 */
+  .bottom-panel.is-expanded { bottom: 0; z-index: 60; }
+  body:has(.bottom-panel.is-expanded) .mobile-bottombar { display: none; }
 
   /* ── FAB（フローティング追加ボタン） ── */
   .fab {
