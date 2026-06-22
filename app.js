@@ -3721,6 +3721,16 @@ function initBottomPanelSwipe() {
       if (dy > 60) goFull();
     }
   }, { passive: true });
+
+  // マウス操作（PC のスマホプレビュー等）でもハンドルで開閉できるよう click でトグル。
+  // 実機ではタップ後に合成 click が発火するため、直近の touch は無視して二重トグルを防ぐ。
+  let lastTouchEnd = 0;
+  handle.addEventListener('touchend', () => { lastTouchEnd = Date.now(); }, { passive: true });
+  handle.addEventListener('click', () => {
+    if (Date.now() - lastTouchEnd < 600) return;   // タッチ由来の合成 click は無視
+    if (panel.classList.contains('is-expanded')) goPeek(false);
+    else goFull();
+  });
 }
 
 /* ── Desktop: free-drag vertical resize ── */
