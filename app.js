@@ -2942,12 +2942,9 @@ applyTheme(isDark);
       return;
     }
     tracking = false;
-    // peek → mid → full と段階的に開く
-    if (panel.classList.contains('is-peek')) {
-      panel.classList.remove('is-peek');
-    } else {
-      panel.classList.add('is-expanded');
-    }
+    // 下から一気に full まで開く（peek からでも mid を飛ばす）
+    panel.classList.remove('is-peek');
+    panel.classList.add('is-expanded');
   }, { passive: true });
 
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
@@ -2992,14 +2989,11 @@ applyTheme(isDark);
       return;
     }
     tracking = false;
-    // full → mid → peek と段階的に縮小
-    if (panel.classList.contains('is-expanded')) {
-      panel.classList.remove('is-expanded');
-      panel.style.height = '';
-    } else {
-      panel.classList.add('is-peek');
-      if (typeof switchView === 'function') switchView('month');
-    }
+    // full から一気に peek へ縮小し、月間カレンダーに戻る
+    panel.classList.remove('is-expanded');
+    panel.classList.add('is-peek');
+    panel.style.height = '';
+    if (typeof switchView === 'function') switchView('month');
   }, { passive: true });
 
   document.addEventListener('touchend', () => { tracking = false; }, { passive: true });
@@ -3674,25 +3668,31 @@ function initBottomPanelSwipe() {
     panel.style.transition = 'none';
   }, { passive: true });
 
+  // peek ↔ full の 2 段階。switchToMonth=true のときだけ月間ビューへ戻す
+  const goPeek = (switchToMonth) => {
+    panel.classList.remove('is-expanded');
+    panel.classList.add('is-peek');
+    panel.style.height = '';
+    if (switchToMonth && typeof switchView === 'function') switchView('month');
+  };
+  const goFull = () => {
+    panel.classList.remove('is-peek');
+    panel.classList.add('is-expanded');
+    panel.style.height = '';
+  };
+
   handle.addEventListener('touchmove', e => {
     if (!dragging) return;
     e.preventDefault();
     const dy = startY - e.touches[0].clientY;
-    const isExpanded = panel.classList.contains('is-expanded');
-    const isPeek     = panel.classList.contains('is-peek');
-
-    if (isExpanded) {
+    if (panel.classList.contains('is-expanded')) {
       // 展開時: 下にドラッグで閉じるプレビュー
       const top = Math.max(0, -dy);
       panel.style.transform = `translateY(${top}px)`;
-    } else if (isPeek) {
-      // peek: 上ドラッグで mid プレビュー
-      const lift = Math.max(0, dy);
-      panel.style.height = `${44 + lift}px`;
     } else {
-      // mid: 上にドラッグで展開プレビュー
+      // peek: 上にドラッグで full へ向かうプレビュー
       const lift = Math.max(0, dy);
-      panel.style.height = `${180 + lift}px`;
+      panel.style.height = `${Math.min(window.innerHeight, 44 + lift)}px`;
     }
   }, { passive: false });
 
@@ -3701,38 +3701,24 @@ function initBottomPanelSwipe() {
     dragging = false;
     const dy = startY - e.changedTouches[0].clientY;
     const wasExpanded = panel.classList.contains('is-expanded');
-    const wasPeek     = panel.classList.contains('is-peek');
 
     panel.style.transition = '';
     panel.style.transform = '';
     panel.style.height = '';
 
-    // タップ判定（縦移動 6px 未満）：peek ↔ mid トグル
+    // タップ判定（縦移動 6px 未満）：peek ↔ full トグル（タップ縮小では view を変えない）
     if (Math.abs(dy) < 6) {
-      if (wasExpanded) return;
-      if (wasPeek) panel.classList.remove('is-peek');
-      else panel.classList.add('is-peek');
+      if (wasExpanded) goPeek(false);
+      else goFull();
       return;
     }
 
     if (wasExpanded) {
-      // 展開中に下スワイプ → mid に戻す（さらに下スワイプで peek へ）
-      if (dy < -80) {
-        panel.classList.remove('is-expanded');
-      }
-    } else if (wasPeek) {
-      // peek 中に上スワイプ → mid（さらに上で full は別 IIFE）
-      if (dy > 60) {
-        panel.classList.remove('is-peek');
-      }
+      // 展開中に下スワイプ → 一気に peek（月間ビューへ）
+      if (dy < -80) goPeek(true);
     } else {
-      // mid 中: 上 80px で full、下 60px で peek
-      if (dy > 80) {
-        panel.classList.add('is-expanded');
-      } else if (dy < -60) {
-        panel.classList.add('is-peek');
-        if (typeof switchView === 'function') switchView('month');
-      }
+      // peek 中に上スワイプ → 一気に full
+      if (dy > 60) goFull();
     }
   }, { passive: true });
 }
