@@ -3535,7 +3535,7 @@ input  { font-family: inherit; }
     display: flex;
     position: fixed;
     left: 0; right: 0; bottom: 0;
-    height: 56px;
+    height: calc(56px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--color-bg-sidebar);
     border-top: 1px solid var(--color-border-strong);
