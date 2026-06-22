@@ -1050,6 +1050,21 @@ input  { font-family: inherit; }
 }
 .btn-theme::before { content: var(--icon-theme); }
 
+/* Menubar tool link (e.g. スマホ表示プレビュー) — matches .btn-theme box */
+.btn-menubar-tool {
+  background: var(--color-btn);
+  border: 1px solid var(--color-btn-border);
+  color: var(--color-text-primary);
+  width: 24px; height: 22px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s;
+}
+.btn-menubar-tool:hover { background: var(--color-btn-hover); }
+
 /* ============================================================
    CALENDAR GRID (Viewport-style)
    ============================================================ */

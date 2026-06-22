@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>スマホ表示プレビュー — My Calendar</title>
+  <style>
+    :root {
+      --bg: #2b2b2b;
+      --panel: #1e1e1e;
+      --text: #e5e5e5;
+      --text-dim: #a0a0a0;
+      --border: #555;
+      --accent: #4772b3;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px 12px 40px;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 22px;
+    }
+    .toolbar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 6px 0 0;
+      letter-spacing: 0.02em;
+    }
+    .toolbar label { font-size: 12px; color: var(--text-dim); }
+    .toolbar select,
+    .toolbar button,
+    .toolbar a {
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--text);
+      background: #2f2f2f;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .toolbar select:hover,
+    .toolbar button:hover,
+    .toolbar a:hover { background: #3a3a3a; border-color: #6a6a6a; }
+    .toolbar .dims { font-size: 12px; color: var(--text-dim); min-width: 76px; text-align: center; }
+
+    /* ── Phone frame ── */
+    .phone {
+      position: relative;
+      background: #111;
+      border: 2px solid #000;
+      border-radius: 38px;
+      padding: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
+      flex-shrink: 0;
+      transition: width 0.2s ease, height 0.2s ease;
+    }
+    /* Notch */
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 12px; left: 50%;
+      transform: translateX(-50%);
+      width: 38%; height: 22px;
+      background: #000;
+      border-radius: 0 0 14px 14px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .phone-screen {
+      width: 100%; height: 100%;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #000;
+    }
+    .phone-screen iframe {
+      width: 100%; height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    .hint {
+      margin-top: 18px;
+      font-size: 11px;
+      color: var(--text-dim);
+      max-width: 520px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .hint code {
+      background: #1a1a1a;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>📱 スマホ表示プレビュー</h1>
+    <label for="device">端末</label>
+    <select id="device">
+      <option value="375x667">iPhone SE (375×667)</option>
+      <option value="390x844" selected>iPhone 14 (390×844)</option>
+      <option value="412x915">Pixel 7 (412×915)</option>
+    </select>
+    <span class="dims" id="dims">390 × 844</span>
+    <button id="reload" type="button">↻ リロード</button>
+    <a id="open-tab" href="./index.html" target="_blank" rel="noopener">新しいタブで開く ↗</a>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="phone-screen">
+      <iframe id="frame" src="./index.html" title="My Calendar（スマホ表示）"
+              allow="clipboard-write; camera"></iframe>
+    </div>
+  </div>
+
+  <p class="hint">
+    同一オリジンで読み込むため、この PC でログイン済みなら実データのスマホ UI がそのまま表示されます。<br>
+    未ログインの場合はフレーム内でログインしてください（以後は共有されます）。
+    直接開くには <code>mobile-preview.html</code> をブラウザで開きます。
+  </p>
+
+  <script>
+    (function () {
+      var phone   = document.getElementById('phone');
+      var screen  = phone.querySelector('.phone-screen');
+      var frame   = document.getElementById('frame');
+      var select  = document.getElementById('device');
+      var dimsEl  = document.getElementById('dims');
+      var reload  = document.getElementById('reload');
+      var BEZEL   = 12; // .phone padding
+
+      function applySize(value) {
+        var parts = value.split('x');
+        var w = parseInt(parts[0], 10);
+        var h = parseInt(parts[1], 10);
+        screen.style.width  = w + 'px';
+        screen.style.height = h + 'px';
+        phone.style.width   = (w + BEZEL * 2) + 'px';
+        phone.style.height  = (h + BEZEL * 2) + 'px';
+        dimsEl.textContent  = w + ' × ' + h;
+      }
+
+      select.addEventListener('change', function () { applySize(select.value); });
+      reload.addEventListener('click', function () {
+        // re-assign src to force a reload even across origins/policies
+        frame.src = frame.src;
+      });
+
+      applySize(select.value);
+    })();
+  </script>
+</body>
+</html>
