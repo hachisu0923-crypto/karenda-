@@ -2384,16 +2384,35 @@ input  { font-family: inherit; }
 
   /* Layout: stack vertically, full width */
   .layout { flex-direction: column; overflow: hidden; }
-  .main   { width: 100%; overflow-y: auto; }
+  /* .main は Properties (peek 44 / mid 180) + 下部ナビ 56 分の余白を確保 */
+  .main {
+    width: 100%;
+    overflow-y: auto;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+  /* タップ可能な月名（タップ＝Today） */
+  .viewport-header .topbar-title { cursor: pointer; }
 
-  /* ── Menubar mobile ── */
-  .blender-menubar { height: 36px; }
-  .blender-app-name { display: none; }
-  .blender-menubar-sep { display: none; }
-  .workspace-tab { padding: 0 8px; font-size: 10px; }
-  .workspace-tab-icon { display: none; }
-  .btn-text  { font-size: 11px; padding: 3px 6px; }
+  /* ── Menubar mobile: 上部メニューバーは隠してビュー切替を下部ナビへ集約 ── */
+  .blender-menubar { display: none; }
+  .btn-text  { font-size: 12px; padding: 4px 8px; }
   .status-bar { display: none; }
+
+  /* ── Viewport header: ハンバーガー+月名+‹今日›+通知 を 1段で ── */
+  .viewport-header {
+    height: 44px;
+    padding: 0 8px;
+    gap: 8px;
+  }
+  .viewport-header .panel-grip,
+  .viewport-header .panel-icon,
+  .viewport-header .panel-header-title,
+  .viewport-header .panel-header-sep { display: none; }
+  .viewport-header .topbar-title { font-size: 15px; font-weight: 700; }
+  .viewport-header .topbar-sub { font-size: 10px; }
+  .viewport-header .topbar-nav { gap: 2px; }
+  .viewport-header .btn-icon { width: 32px; height: 32px; font-size: 18px; }
+  .viewport-header .sidebar-toggle { padding: 6px; }
 
   /* ── Calendar wrap: スクロールコンテナを維持しつつ横はみ出しを防ぐ ── */
   .calendar-wrap { overflow-x: hidden; }
@@ -2439,19 +2458,27 @@ input  { font-family: inherit; }
     flex-shrink: 0;
   }
 
-  /* Wage badge: hide on very small screens to save space */
-  .day-wage-badge { display: none; }
-
-  /* Event pills: compact on mobile */
-  .event-pill {
-    padding: 1px 3px;
-    font-size: 9.5px;
-    gap: 2px;
+  /* Wage badge: compact but visible on mobile（収入把握は主機能） */
+  .day-wage-badge {
+    display: inline-block;
+    font-size: 8.5px;
+    padding: 0 3px;
+    height: 12px;
+    line-height: 12px;
+    border-radius: 4px;
   }
-  .event-pill-time { font-size: 8px; }   /* compact time on mobile */
-  .event-pill-name { font-size: 9px; }
 
-  .more-badge { font-size: 9px; padding: 1px 3px; }
+  /* Event pills: readable on mobile（9.5px → 11.5px） */
+  .event-pill {
+    padding: 3px 6px;
+    font-size: 11.5px;
+    gap: 4px;
+    min-height: 18px;
+  }
+  .event-pill-time { font-size: 10px; }
+  .event-pill-name { font-size: 11px; }
+
+  .more-badge { font-size: 10px; padding: 2px 5px; }
 
   /* ── Modal: full-screen bottom sheet on mobile ── */
   .overlay { padding-top: 0; align-items: flex-end; }
@@ -3465,10 +3492,14 @@ input  { font-family: inherit; }
 /* ── Mobile bottom panel ── */
 @media (max-width: 720px) {
   .bottom-panel::before { display: none; }
+  /* mid（従来）= 180px、peek = ハンドル+タブのみ、is-expanded = 100dvh */
   .bottom-panel { height: 180px; }
+  .bottom-panel.is-peek { height: 44px; }
+  .bottom-panel.is-peek > .bp-section { display: none !important; }
+  .bottom-panel.is-peek .bp-panel-header { padding-top: 0; padding-bottom: 0; }
   .bp-swipe-handle { display: flex; }
   .bp-section { max-width: 100%; }
-  .bp-tab { padding: 0 8px; font-size: 10px; }
+  .bp-tab { padding: 0 8px; font-size: 11px; }
   .task-filter-bar { max-width: 100%; }
   .task-del { opacity: 0.6; }
   .task-add-form { gap: 5px; }
@@ -3477,6 +3508,72 @@ input  { font-family: inherit; }
   .bp-add-input { font-size: 13px; }
   .bp-add-form { flex-wrap: wrap; }
   .bp-add-form .bp-add-input { flex-basis: 100%; }
+
+  /* ── Mobile bottom navigation bar (固定、下部) ── */
+  .mobile-bottombar {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--color-bg-sidebar);
+    border-top: 1px solid var(--color-border-strong);
+    z-index: 50;
+  }
+  .mbb-btn {
+    flex: 1 1 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    font-family: inherit;
+    cursor: pointer;
+    padding: 6px 0;
+    transition: color 0.12s;
+  }
+  .mbb-icon { font-size: 18px; line-height: 1; }
+  .mbb-label { font-size: 10px; line-height: 1; }
+  .mbb-btn.is-active { color: var(--color-accent); }
+  .mbb-btn:active { background: var(--color-bg-hover); }
+
+  /* Properties / FAB を下部ナビ分だけ上に押し上げる */
+  .bottom-panel { bottom: calc(56px + env(safe-area-inset-bottom)); }
+  .bottom-panel.is-expanded { bottom: 0; }
+
+  /* ── FAB（フローティング追加ボタン） ── */
+  .fab {
+    display: flex;
+    position: fixed;
+    right: 16px;
+    bottom: calc(56px + 180px + 12px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    font-size: 30px; font-weight: 300; line-height: 1;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    cursor: pointer;
+    z-index: 49;
+    transition: transform 0.15s, bottom 0.25s;
+  }
+  .fab:active { transform: scale(0.92); }
+  /* Properties が peek の時は FAB を下げる */
+  .bottom-panel.is-peek ~ .fab,
+  body:has(.bottom-panel.is-peek) .fab {
+    bottom: calc(56px + 44px + 12px + env(safe-area-inset-bottom));
+  }
+  /* Properties が full のときは FAB を隠す */
+  body:has(.bottom-panel.is-expanded) .fab { display: none; }
+}
+
+/* ── Desktop: hide mobile-only chrome ── */
+@media (min-width: 721px) {
+  .mobile-bottombar { display: none; }
+  .fab { display: none; }
 }
 
 /* ── Mobile day view ── */
