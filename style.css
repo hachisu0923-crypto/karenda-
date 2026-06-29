@@ -1315,6 +1315,29 @@ input  { font-family: inherit; }
 }
 .overlay.is-open { display: flex; }
 
+/* Error toast (PWA で alert が出ない場合の可視化用) */
+.error-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 80px;
+  transform: translateX(-50%);
+  max-width: 90%;
+  background: var(--color-danger);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.error-toast.is-show { opacity: 1; pointer-events: auto; }
+
 /* Edit overlay sits above day modal */
 #js-edit-overlay { z-index: 300; }
 

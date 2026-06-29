@@ -700,6 +700,7 @@ async function addEventToSupabase(key, ev) {
   } catch (e) {
     console.error('Add event error:', e);
     setSyncStatus('error');
+    showErrorToast('予定の保存に失敗しました: ' + (e.message || JSON.stringify(e)));
     alert('予定の保存に失敗しました。\n\nエラー: ' + (e.message || JSON.stringify(e)) + '\n\n実際のカラム名: ' + JSON.stringify(_evColMap));
   }
 }
@@ -716,6 +717,7 @@ async function deleteEventFromSupabase(ev) {
   } catch (e) {
     console.error('Delete event error:', e);
     setSyncStatus('error');
+    showErrorToast('予定の削除に失敗しました: ' + (e.message || JSON.stringify(e)));
     alert('予定の削除に失敗しました。\n' + (e.message || JSON.stringify(e)));
   }
 }
@@ -744,6 +746,7 @@ async function updateEventInSupabase(ev) {
   } catch (e) {
     console.error('Update event error:', e);
     setSyncStatus('error');
+    showErrorToast('予定の更新に失敗しました: ' + (e.message || JSON.stringify(e)));
     alert('予定の更新に失敗しました。\n' + (e.message || JSON.stringify(e)));
   }
 }
@@ -1482,15 +1485,21 @@ function openDayModal(y,m,d) {
   document.getElementById('js-shift-start').value='';
   document.getElementById('js-shift-end').value='';
   document.getElementById('js-shift-break').value='';
-  updateWagePreview();
 
-  renderExistingEvents();
-  renderCatChips();
-  renderTemplateChips();
-  renderEventTemplateChips();
-  updateShiftTabVisibility();
-  switchTab(activeTab);
+  // 先にモーダルを開く：以降の描画が万一落ちても入力欄に到達できるようにする
   openOverlay('js-day-overlay');
+  try {
+    updateWagePreview();
+    renderExistingEvents();
+    renderCatChips();
+    renderTemplateChips();
+    renderEventTemplateChips();
+    updateShiftTabVisibility();
+    switchTab(activeTab);
+  } catch (err) {
+    console.error('openDayModal render error:', err);
+    showErrorToast('表示エラー: ' + (err?.message || err));
+  }
   setTimeout(()=>{
     (activeTab==='shift'
       ?document.getElementById('js-shift-start')
@@ -1503,6 +1512,8 @@ document.querySelectorAll('.form-tab').forEach(btn=>{
 });
 
 function switchTab(tab) {
+  // 不正値で両タブが消えて「入力欄が無い」状態になるのを防ぐ
+  if (tab!=='event' && tab!=='shift') tab='event';
   activeTab=tab;
   document.querySelectorAll('.form-tab').forEach(b=>b.classList.toggle('is-active',b.dataset.tab===tab));
   document.getElementById('js-tab-event').style.display=tab==='event'?'':'none';
@@ -1638,14 +1649,19 @@ function renderExistingEvents() {
       e.stopPropagation();
       e.preventDefault();
       if (!confirm('この予定を削除しますか？')) return;
-      const arr = events[selectedKey];
-      const idx = arr.indexOf(ev);
-      if (idx !== -1) {
-        await deleteEventFromSupabase(ev);
-        arr.splice(idx, 1);
-        if (!arr.length) delete events[selectedKey];
-        renderExistingEvents();
-        renderAll();
+      try {
+        const arr = events[selectedKey];
+        const idx = arr ? arr.indexOf(ev) : -1;
+        if (idx !== -1) {
+          await deleteEventFromSupabase(ev);
+          arr.splice(idx, 1);
+          if (!arr.length) delete events[selectedKey];
+          renderExistingEvents();
+          renderAll();
+        }
+      } catch (err) {
+        console.error('delete event error:', err);
+        showErrorToast('削除エラー: ' + (err?.message || err));
       }
     });
 
@@ -1931,15 +1947,20 @@ async function addEvent() {
   const remSel=document.getElementById('js-ev-reminder');
   const reminderMinutes=remSel?.value?+remSel.value:null;
   const ev={title,time,timeEnd,catId:selectedCatId,reminderMinutes};
-  if (!events[selectedKey]) events[selectedKey]=[];
-  events[selectedKey].push(ev);
-  await addEventToSupabase(selectedKey,ev);
-  document.getElementById('js-ev-title').value='';
-  document.getElementById('js-ev-time-start').value='';
-  document.getElementById('js-ev-time-end').value='';
-  if (remSel) remSel.value='';
-  renderExistingEvents();
-  renderAll();
+  try {
+    if (!events[selectedKey]) events[selectedKey]=[];
+    events[selectedKey].push(ev);
+    await addEventToSupabase(selectedKey,ev);
+    document.getElementById('js-ev-title').value='';
+    document.getElementById('js-ev-time-start').value='';
+    document.getElementById('js-ev-time-end').value='';
+    if (remSel) remSel.value='';
+    renderExistingEvents();
+    renderAll();
+  } catch (err) {
+    console.error('addEvent error:', err);
+    showErrorToast('追加エラー: ' + (err?.message || err));
+  }
 }
 
 // ── Shift wage preview ────────────────────────────────────────────────────────
@@ -2838,6 +2859,33 @@ function renderAll(){
     _syncBudgetMonth().then(function() { renderBudgetPanel(); });
   }
 }
+
+// ── Error toast (PWA では alert が出ないことがあるため画面トーストで可視化) ──────
+function showErrorToast(msg) {
+  try {
+    let t = document.getElementById('js-error-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'js-error-toast';
+      t.className = 'error-toast';
+      t.addEventListener('click', () => t.classList.remove('is-show'));
+      (document.body || document.documentElement).appendChild(t);
+    }
+    t.textContent = String(msg);
+    t.classList.add('is-show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('is-show'), 6000);
+  } catch (_) { /* トースト自体の失敗は無視 */ }
+}
+window.addEventListener('error', e => {
+  // リソース読み込み失敗（img/script の 404 等）は無視し、JS 例外のみ表示
+  if (!e.message && !e.error) return;
+  showErrorToast('エラー: ' + (e.message || e.error?.message || 'unknown'));
+});
+window.addEventListener('unhandledrejection', e => {
+  const r = e.reason;
+  showErrorToast('エラー: ' + (r?.message || (typeof r === 'string' ? r : JSON.stringify(r)) || 'unknown'));
+});
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
